@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Config } from '@fractl-ui/types'
-	import ConnectModal from './ConnectModal/ConnectModal.svelte';
-	import AccountModal from './AccountModal.svelte';
+	import ConnectModal from './ConnectModal/ConnectModal.svelte'
+	import AccountModal from './AccountModal.svelte'
 	import { blur } from 'svelte/transition'
 	import { quintOut } from 'svelte/easing'
 

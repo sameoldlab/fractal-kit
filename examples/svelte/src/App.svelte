@@ -15,20 +15,23 @@
 	const evm = addEvmConnection($wagmiConfig)
 	let account
 
-	const connect = async (conf) =>  create(conf).then((connect) => connect()
-		.then(res => {
-			account = {
-				config: res,
-				accountData: res.accountData
-			}
-			console.log(res)
-		})
-		.catch(err => console.error(err))
+	const connect = async (conf) =>
+		create(conf).then((connect) =>
+			connect()
+				.then((res) => {
+					account = {
+						config: res,
+						accountData: res.accountData
+					}
+					console.log(res)
+				})
+				.catch((err) => console.error(err))
 		)
 </script>
+
 <header>
-	<button on:click={()=>connect(evm)}>Connect EVM</button>
-	<button on:click={()=>connect(stark)}>Connect Stark</button>
+	<button on:click={() => connect(evm)}>Connect EVM</button>
+	<button on:click={() => connect(stark)}>Connect Stark</button>
 </header>
 <main>
 	<div class="hero">
@@ -43,8 +46,8 @@
 		</p>
 	</div>
 	{#if account}
-  	<AccountModal {...account}/>
-  {/if}
+		<AccountModal {...account} />
+	{/if}
 
 	<!-- 
 	{#if connected}

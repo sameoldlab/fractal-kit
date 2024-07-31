@@ -9,7 +9,7 @@
 	import Zorb from './zorb/Zorb.svelte'
 	import Modal from './Common/Modal.svelte'
 	import { onDestroy } from 'svelte'
-	import type { Readable} from 'svelte/store'
+	import type { Readable } from 'svelte/store'
 
 	export let accountData: Readable<AccountData>
 	export let config: ConfigConnected<Connector>

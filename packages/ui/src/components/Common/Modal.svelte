@@ -48,7 +48,7 @@
 		dialog.close()
 		dispatch('close')
 	}
-	onDestroy(()=>{
+	onDestroy(() => {
 		dispatch('close')
 	})
 </script>
