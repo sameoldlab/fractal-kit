@@ -1,5 +1,4 @@
 <script lang="ts">
-	import '../styles/index.css'
 	import { truncate } from '../utils.js'
 	import type {
 		AccountData,
@@ -38,7 +37,7 @@
 	<button
 		aria-haspopup="dialog"
 		data-fractl-trigger
-		class="address {btnClass}"
+		class="address fcl_el {btnClass}"
 		on:click={open}
 	>
 		{#if avatar}
@@ -52,7 +51,7 @@
 
 	<Modal titleText="Connected" bind:open bind:close customTrigger>
 		<!-- header>div*2+div.balance+hr+div>div.header -->
-		<div class="fcl__layout-3col">
+		<div class="fcl__layout-3col fcl__el">
 			{#if avatar}
 				<img class="fcl__graphic-primary rounded" src={avatar} alt="" />
 			{:else}
@@ -84,7 +83,7 @@
 				<!-- <button on:click={handleDisconnect} disabled> Switch</button> -->
 
 				<button
-					on:click={() => handleDisconnect($accountData.account.connector)}
+					on:click={() => handleDisconnect($accountData.account?.connector)}
 					class="fcl__btn-primary row justify-center"
 				>
 					<!-- prettier-ignore -->

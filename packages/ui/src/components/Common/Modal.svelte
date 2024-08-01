@@ -1,5 +1,4 @@
 <script lang="ts">
-	import '../../styles/index.css'
 	import { createEventDispatcher, onDestroy } from 'svelte'
 	const dispatch = createEventDispatcher()
 

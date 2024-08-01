@@ -240,24 +240,25 @@ button.fcl__btn-primary svg,
 /* =============== */
 /* Utility Classes */
 /* =============== */
-
-.justify-center {
-	justify-content: center;
-	text-align: center;
-}
-.justify-between {
-	justify-content: space-between;
-}
-.rounded {
-	border-radius: 50%;
-}
-.error {
-	color: var(--fcl-text-color-error, oklch(80% 0.16 8));
-}
-button.address {
-	font-feature-settings: 'tnum', 'zero';
-	transition: opacity 150ms ease-out;
-}
-.mt-1 {
-	margin-top: 1em;
+.fcl__el {
+	.justify-center {
+		justify-content: center;
+		text-align: center;
+	}
+	.justify-between {
+		justify-content: space-between;
+	}
+	.rounded {
+		border-radius: 50%;
+	}
+	.error {
+		color: var(--fcl-text-color-error, oklch(80% 0.16 8));
+	}
+	button.address {
+		font-feature-settings: 'tnum', 'zero';
+		transition: opacity 150ms ease-out;
+	}
+	.mt-1 {
+		margin-top: 1em;
+	}
 }

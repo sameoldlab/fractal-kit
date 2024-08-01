@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { addEvmConnection } from '@fractl-ui/evm'
-	import { create, AccountModal } from 'fractl-ui'
+	import { create } from 'fractl-ui'
+	import { AccountModal } from 'fractl-ui/svelte'
 	import wagmiConfig from './lib/wagmiConfig'
 	import { onMount } from 'svelte'
 	import { reconnect } from '@wagmi/core'
@@ -48,11 +49,12 @@
 	{#if account}
 		<AccountModal {...account} />
 	{/if}
-
 	<!-- 
-	{#if connected}
-		<AccountDialog config={$config}></AccountDialog>
-	{/if} -->
+	Future versions of ConnectModal will not include a button.
+	FractlModal will take care of transitions swapping between connection states. 
+	A reuglar button can also be used to trigger the connect moadal
+	<FractlModal {config} />
+	-->
 </main>
 <footer class="links">
 	<a href="https://github.com/sameoldlab/fractl-ui">

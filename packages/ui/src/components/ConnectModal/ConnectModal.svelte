@@ -1,23 +1,17 @@
 <script lang="ts">
-	import '../../styles/index.css'
 	import { onDestroy, onMount } from 'svelte'
 	import copyEN from '../../copy/copy.EN.js'
 	import Modal from '../Common/Modal.svelte'
 	import Scannable from './Scannable.svelte'
-	import type {
-		ConfigConnected,
-		ConfigDisconnected,
-		Connector,
-		StateDisconnected
-	} from '@fractl-ui/types'
+	import type { Config, Connector, StateDisconnected } from '@fractl-ui/types'
 	import type { Readable } from 'svelte/store'
 
-	export let config: ConfigDisconnected<Connector>
+	export let config: Config<Connector>
 	export let state: Readable<StateDisconnected<Connector>>
 	export let btnClass = ''
 	export let triggerText = 'Connect Wallet'
-	export let onConnect: (fractl: ConfigConnected<Connector>) => void
-	export let onConnectFail: (error: Error) => void
+	export let onConnect: (fractl: Config<Connector>) => void
+	export let onConnectFail: (error: unknown) => void
 
 	let open: () => void
 	let close: () => void
@@ -97,7 +91,7 @@
 		</button>
 	</svelte:fragment>
 
-	<div class="fcl__layout-1col">
+	<div id="fractl-connect" class="fcl__layout-1col fcl__el">
 		{#if activeRequest}
 			{#if activeRequest.type === 'injected'}
 				<!-- <Injected connector={activeRequest}></Injected> -->
