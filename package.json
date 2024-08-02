@@ -8,7 +8,7 @@
 		"format": "prettier --write .",
 		"prepare": "husky install",
 		"build": "pnpm -F='./packages/*' --parallel build",
-		"check": "pnpm -r --no-bail check",
+		"check": "pnpm -r --no-bail --parallel check",
 		"dev:site": "pnpm -F site dev",
 		"dev:pkg": "pnpm -F='./packages/*' --parallel dev",
 		"build:site": "pnpm -F site build",
