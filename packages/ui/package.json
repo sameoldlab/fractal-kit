@@ -40,8 +40,8 @@
 		}
 	},
 	"scripts": {
-		"dev": "vite build -w",
-		"build": "vite build ",
+		"dev": "svelte-package -i ./src -w",
+		"build": "svelte-package -i ./src",
 		"check": "svelte-check --tsconfig ./tsconfig.json"
 	},
 	"devDependencies": {
