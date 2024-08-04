@@ -6,22 +6,13 @@
 	export let connector: Connector
 	let data: string = ''
 
-	console.log('getting uri from wallet connect')
-	const getQr = async () => {
-		try {
-			const data = await connector.getQr()
-		} catch (err) {
-			console.error(err)
-			throw Error(err)
-		}
+	try {
+		connector.fractl.getUri((uri) => (data = uri))
+	} catch (err) {
+		console.error(err)
+		// throw Error(err)
 	}
 
-	connector.getProvider().then((provider) => {
-		if (provider) {
-			provider.on('display_uri', (uri) => (data = uri))
-			provider.connect()
-		}
-	})
 </script>
 
 <div id="fractl-scan" class="fcl__layout-1col fcl__el">

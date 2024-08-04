@@ -32,16 +32,16 @@
 	$: title = !activeRequest ? 'Connect Wallet' : activeRequest.name
 
 	const handleConnect = async (connector: Connector) => {
-		await config.reconnect([connector])
-
+		// await config.reconnect([connector])
 		try {
 			// console.debug('config.state: ', $state.status)
 			activeRequest = connector
-			await config.connect(connector)
+			await connector.fractl.connect()
 			onConnect(config)
 		} catch (error) {
+			console.error(error)
 			// onConnectFail(error)
-			// console.error('caught: ', error)
+			throw error
 		}
 
 		// console.debug('config.state: ', $state.status)

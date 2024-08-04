@@ -1,6 +1,6 @@
 import type { AccountData, AccountDataResponse, Config } from '@fractl-ui/types'
 import {
-	connect,
+	connect as wagmiConnect,
 	reconnect,
 	disconnect,
 	getAccount,
@@ -14,8 +14,10 @@ import {
 } from '@wagmi/core'
 import { formatUnits } from 'viem/utils'
 import { map } from 'nanostores'
+import { getUri } from './connect.js'
 
 type WagmiConfig = Config<Connector>
+const TYPE = 'eip155'
 
 /**
  * Provides connection details to fractl-modal passed into it's config parameter
@@ -24,6 +26,8 @@ export const addEvmConnection = async (
 	config: wagmiConfig,
 	{ resolver } = { resolver: 'ENS' }
 ): Promise<WagmiConfig> => {
+
+	
 	const state = map({
 		current: config.state.connections.get(config.state.current),
 		status: config.state.status
@@ -100,19 +104,29 @@ export const addEvmConnection = async (
 		}
 	}
 
+	const connect = (connector: Connector) => async () => {
+		const { accounts, chainId } = await wagmiConnect(config, { connector })
+		accountData.setKey('account', {
+			address: accounts?.[0],
+			addresses: accounts
+		})
+		return { accounts, chainId }
+	}
+
 	return {
 		state: { subscribe: state.subscribe },
 		accountData: { subscribe: accountData.subscribe },
 		get connectors() {
-			return config.connectors
-		},
-		connect: async (connector: Connector) => {
-			const { accounts, chainId } = await connect(config, { connector })
-			accountData.setKey('account', {
-				address: accounts?.[0],
-				addresses: accounts
+			const conn = config.connectors.map(c => {
+				c.fractl = {getUri: {}, connect: {}}
+
+				if (c.id === 'walletConnect') 
+				  c.fractl.getUri = async (callback: (uri: string)=>void) => await getUri(c, callback)
+
+				c.fractl.connect = connect(c)
+				return c
 			})
-			return { accounts, chainId }
+			return conn
 		},
 		reconnect: async (connectors: Connector[]) =>
 			await reconnect(config, { connectors }),
