@@ -225,6 +225,9 @@ importers:
 
   packages/ui:
     devDependencies:
+      '@castlenine/svelte-qrcode':
+        specifier: ^2.2.0
+        version: 2.2.0(svelte@4.2.9)
       '@fractl-ui/types':
         specifier: workspace:^
         version: link:../types
@@ -240,9 +243,6 @@ importers:
       '@tsconfig/svelte':
         specifier: ^5.0.2
         version: 5.0.2
-      '@types/qrcode':
-        specifier: ^1.5.5
-        version: 1.5.5
       '@wagmi/core':
         specifier: 2.0.1
         version: 2.0.1(react@18.2.0)(typescript@5.3.3)(viem@2.0.1(typescript@5.3.3))
@@ -252,9 +252,6 @@ importers:
       postcss-preset-env:
         specifier: ^9.3.0
         version: 9.6.0(postcss@8.4.40)
-      qrcode:
-        specifier: ^1.5.3
-        version: 1.5.3
       sass:
         specifier: ^1.77.8
         version: 1.77.8
@@ -364,6 +361,11 @@ packages:
   '@babel/types@7.23.9':
     resolution: {integrity: sha512-dQjSq/7HaSjRM43FFGnv5keM2HsxpmyV1PfaSVm0nzzjwwTmjOe6J4bC8e3+pTEIgHaHj+1ZlLThRJ2auc/w1Q==}
     engines: {node: '>=6.9.0'}
+
+  '@castlenine/svelte-qrcode@2.2.0':
+    resolution: {integrity: sha512-0PbzjH86AQOPFomHD7FDxSzWlQC8MOfyvOfHS0kmRXNA2nz5+oOL9kjpE+7IywejCGIXFN3sZrBpvx9i6xsdeA==}
+    peerDependencies:
+      svelte: '>=3.54.0'
 
   '@changesets/apply-release-plan@7.0.4':
     resolution: {integrity: sha512-HLFwhKWayKinWAul0Vj+76jVx1Pc2v55MGPVjZ924Y/ROeSsBMFutv9heHmCUj48lJyRfOTJG5+ar+29FUky/A==}
@@ -2006,9 +2008,6 @@ packages:
 
   '@types/pug@2.0.10':
     resolution: {integrity: sha512-Sk/uYFOBAB7mb74XcpizmH0KOR2Pv3D2Hmrh1Dmy5BmK3MpdSa5kqZcg6EKBdklU0bFXX9gCfzvpnyUehrPIuA==}
-
-  '@types/qrcode@1.5.5':
-    resolution: {integrity: sha512-CdfBi/e3Qk+3Z/fXYShipBT13OJ2fDO2Q2w5CIP5anLTLIndQG9z6P1cnm+8zCWSpm5dnxMFd/uREtb0EXuQzg==}
 
   '@types/semver@7.5.8':
     resolution: {integrity: sha512-I8EUhyrgfLrcTkzV3TSsGyl1tSuPrEDzr0yd5m90UgNxQkyDXULk3b6MlQqTCpZpNtWe1K0hzclnZkTcLBe2UQ==}
@@ -5010,6 +5009,10 @@ snapshots:
       '@babel/helper-validator-identifier': 7.22.20
       to-fast-properties: 2.0.0
 
+  '@castlenine/svelte-qrcode@2.2.0(svelte@4.2.9)':
+    dependencies:
+      svelte: 4.2.9
+
   '@changesets/apply-release-plan@7.0.4':
     dependencies:
       '@babel/runtime': 7.25.0
@@ -7039,10 +7042,6 @@ snapshots:
       undici-types: 6.11.1
 
   '@types/pug@2.0.10': {}
-
-  '@types/qrcode@1.5.5':
-    dependencies:
-      '@types/node': 22.0.0
 
   '@types/semver@7.5.8': {}
 

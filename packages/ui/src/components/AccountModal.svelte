@@ -71,7 +71,7 @@
 			</svg>
 			</button>
 
-			<span class="fcl__subhead"
+			<span class="fcl__text-secondary"
 				>{balance ? `${balance.substring(0, 7)} ${symbol}` : 0}</span
 			>
 			<!-- <br /> -->

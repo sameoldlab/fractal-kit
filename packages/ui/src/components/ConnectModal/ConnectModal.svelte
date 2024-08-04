@@ -5,6 +5,7 @@
 	import Scannable from './Scannable.svelte'
 	import type { Config, Connector, StateDisconnected } from '@fractl-ui/types'
 	import type { Readable } from 'svelte/store'
+	import { slide } from 'svelte/transition'
 
 	export let config: Config<Connector>
 	export let state: Readable<StateDisconnected<Connector>>
@@ -39,7 +40,7 @@
 			await config.connect(connector)
 			onConnect(config)
 		} catch (error) {
-			onConnectFail(error)
+			// onConnectFail(error)
 			// console.error('caught: ', error)
 		}
 
@@ -58,13 +59,7 @@
 	{triggerText}
 </button>
 
-<Modal
-	titleText={title}
-	bind:open
-	bind:close
-	inlineSize={activeRequest ? 260 : 240}
-	customTrigger
->
+<Modal titleText={title} bind:open bind:close customTrigger>
 	<svelte:fragment slot="icon-left">
 		<button
 			class:hide={!activeRequest}
@@ -91,10 +86,10 @@
 		</button>
 	</svelte:fragment>
 
-	<div id="fractl-connect" class="fcl__layout-1col fcl__el">
-		{#if activeRequest}
-			{#if activeRequest.type === 'injected'}
-				<!-- <Injected connector={activeRequest}></Injected> -->
+	{#if activeRequest}
+		{#if activeRequest.type === 'injected'}
+			<!-- <Injected connector={activeRequest}></Injected> -->
+			<div id="fractl-injected" class="fcl__layout-1col fcl__el">
 				<div class="fcl__graphic-primary">
 					<!-- prettier-ignore -->
 					<svg class:hide={$state.status !== 'connecting' && $state.status !== 'reconnecting'} class="spin" width="108" height="108" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" > 
@@ -113,23 +108,26 @@
 
 				{#if $state.status === 'connecting' || $state.status === 'reconnecting'}
 					<h3 class="fcl__text-primary">Requesting Connection</h3>
-					<p class="fcl__subhead">
+					<p class="fcl__text-secondary">
 						{copyEN(activeRequest.name).connecting[activeRequest.type]}
 					</p>
 				{:else}
 					<h3 class="fcl__text-primary error">Connection Declined</h3>
-					<p class="fcl__subhead">
+					<p class="fcl__text-secondary">
 						{copyEN(activeRequest.name).rejected[activeRequest.type]}
 					</p>
 					<button
 						on:click={() => handleConnect(activeRequest)}
-						class="fcl__btn-primary justify-center mt-1">Retry</button
+						class="fcl__btn-primary justify-center mt-1"
+						in:slide>Retry</button
 					>
 				{/if}
-			{:else if activeRequest.type === 'walletConnect'}
-				<Scannable connector={activeRequest} />
-			{/if}
-		{:else}
+			</div>
+		{:else if activeRequest.type === 'walletConnect'}
+			<Scannable connector={activeRequest} />
+		{/if}
+	{:else}
+		<div id="fractl-connect" class="fcl__layout-1col fcl__el">
 			<div class="connectors">
 				{#each config.connectors.toReversed() as connector}
 					<button
@@ -147,13 +145,19 @@
 					</button>
 				{/each}
 			</div>
-
 			<slot name="footer" />
-		{/if}
-	</div>
+		</div>
+	{/if}
 </Modal>
 
 <style>
+	#fractl-connect {
+		/* scroll through connector over max height */
+		max-block-size: 300px;
+		overscroll-behavior: contain;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
 	.hide {
 		display: none;
 		opacity: 0;

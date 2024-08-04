@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { createEventDispatcher, onDestroy } from 'svelte'
+	import { createEventDispatcher, onDestroy, tick } from 'svelte'
+	import type { Action } from 'svelte/action'
 	const dispatch = createEventDispatcher()
 
 	export let titleText = 'Title Text'
 	export let customTrigger = false
 
-	export let inlineSize: number
 	export let triggerText = 'open dialog'
 	let dialog: HTMLDialogElement
 
@@ -13,18 +13,15 @@
 		x: document.documentElement.style.overflowX,
 		y: document.documentElement.style.overflowY
 	}
-	let isOpen = false
 
-	const restoreStyles = (el: HTMLDialogElement) => {
+	const restoreStyles: Action<HTMLDialogElement> = (el) => {
 		el.addEventListener('close', () => {
-			isOpen = false
 			document.documentElement.style.overflowY = docOverflow.x
 			document.documentElement.style.overflowX = docOverflow.y
 		})
 		return {
 			destroy() {
 				el.removeEventListener('close', () => {
-					isOpen = false
 					document.documentElement.style.overflowY = docOverflow.x
 					document.documentElement.style.overflowX = docOverflow.y
 				})
@@ -33,7 +30,6 @@
 	}
 
 	export function open() {
-		isOpen = true
 		dialog.showModal()
 
 		/* Get the overflow at the point when dialog is being opened */
@@ -50,6 +46,32 @@
 	onDestroy(() => {
 		dispatch('close')
 	})
+
+	const resize = async () => {
+		const reducedMotion = window.matchMedia(
+			'(prefers-reduced-motion: reduce)'
+		).matches
+		if (!dialog || reducedMotion) return
+
+		let firstHeight = dialog.getBoundingClientRect().height
+		await tick()
+		const lastHeight = dialog.getBoundingClientRect().height
+		dialog.animate(
+			[{ height: `${firstHeight}px` }, { height: `${lastHeight}px` }],
+			{
+				duration: 200,
+				fill: 'none',
+				easing: 'ease-out',
+				composite: 'accumulate'
+			}
+		)
+	}
+	// onMount(resize)
+	$: {
+		// console.log('contentHeight:', contentHeight)
+		titleText
+		resize()
+	}
 </script>
 
 <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
@@ -61,8 +83,7 @@
 	aria-labelledby="fcl__dialog-title"
 	on:click|self={close}
 	use:restoreStyles
-	inert={isOpen ? undefined : true}
-	style:inline-size={`min(${inlineSize || 240}px, 100%)`}
+	class="fcl__el"
 >
 	<!-- transition:fade={{ duration: 500, easing: quadInOut }} -->
 	<header>
@@ -95,6 +116,11 @@
 	<div class="fcl__dialog-content">
 		<slot />
 	</div>
+	<footer class="fcl__dialog-footer">
+		<slot name="footer">
+			<!--<div class="spacer"></div>-->
+		</slot>
+	</footer>
 </dialog>
 
 {#if !customTrigger}
@@ -103,33 +129,27 @@
 
 <style>
 	dialog:not([open]) {
-		pointer-events: none;
+		display: none;
 		opacity: 0;
 	}
 
 	dialog[open] {
+		display: flex;
+		flex-direction: column;
 		opacity: 1;
+		height: fit-content;
 	}
 
 	dialog {
-		/* Managing transition */
-		transition:
-			width 128ms,
-			opacity 128ms ease-in,
-			position 128ms ease-in;
-
-		/* Position at center */
-		display: block;
-		position: fixed;
-		margin: auto;
+		overflow: hidden;
 		padding: 0;
-		inset: 0;
+		margin-block-start: 25svh;
 
 		&::backdrop {
 			background: var(--fcl-overlay-background, hsla(0, 0%, 0%, 0.4));
 			backdrop-filter: var(--fcl-overlay-backdrop-filter, none);
 		}
-		/* max-inline-size: 336px; */
+		inline-size: 300px;
 		background: var(--fcl-body-background, hsl(228, 11%, 9%));
 		color: var(--fcl-text-color, #f1f1f1);
 		--fcl-sc: hsla(228, 11%, 9%, 0.08);
@@ -163,7 +183,7 @@
 			font-family: inherit;
 		}
 
-		/* Targetting Dialog Head Slot */
+		/* Targets Dialog Head Slot */
 		--inner-padding: var(--fcl-modal-padding, 1em);
 		& > header {
 			display: grid;
@@ -180,45 +200,32 @@
 				font-weight: var(--fcl-modal-heading-font-weight, 700);
 			}
 		}
-		& .fcl__dialog-content {
+		& .fcl__dialog-content > *,
+		& .fcl__dialog-footer {
 			padding: var(--inner-padding);
+			padding-block-start: 0;
+			box-sizing: border-box;
+		}
+
+		& .fcl__dialog-content > * {
+			padding-block-end: 0;
 		}
 	}
-	/* 	@media (max-width: 500px) {
+	@media (max-width: 500px) {
 		dialog {
+			margin-block-start: auto;
 			margin-block-end: 0;
 			border-end-end-radius: 0;
 			border-end-start-radius: 0;
-			/* inline-size: 100%; *
+			inline-size: 100vw;
+			inline-size: 100svw;
 		}
-	} */
+	}
 	.fcl__dialog-content {
-		display: grid;
-		grid-template-rows: 1fr;
-		transition: 250ms grid-template-rows ease;
-		max-block-size: 300px;
-		overscroll-behavior: contain;
-		overflow-y: auto;
-		padding-block-start: 0;
-
-		&::-webkit-scrollbar {
-			inline-size: 0.5em;
-		}
-
-		&::-webkit-scrollbar-track {
-			background: var(--fcl-body-background);
-		}
-		&::-webkit-scrollbar-thumb {
-			background: var(--fcl-text-color, #222429);
-			border: 0.2em solid transparent;
-			border-radius: calc(var(--fcl-border-radius, 50em) / 8);
-			&:hover {
-				background-color: var(--fcl-btn-hover-background, #2f3139);
-			}
-		}
-		&::-webkit-scrollbar-button {
-			background: var(--fcl-body-background);
-		}
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		padding: 0;
 	}
 	.fcl__header-icon {
 		height: 30px;
