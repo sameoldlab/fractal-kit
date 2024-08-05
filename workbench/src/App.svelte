@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { create } from 'fractl-ui'
-	import { AccountModal } from 'fractl-ui/svelte'
 	import { eip155 } from '@fractl-ui/evm'
 	import { starknet } from '@fractl-ui/starknet'
+	import { createFractl } from './fractl'
+	import { AccountModal } from './fractl/components'
 	import wagmiConfig from './lib/wagmiConfig'
 	import { onMount } from 'svelte'
 	import { reconnect } from '@wagmi/core'
@@ -10,14 +10,21 @@
 	import './app.css'
 	const stark = starknet()
 
+	let fractl
 	onMount(async () => {
-		reconnect($wagmiConfig, { connectors: $wagmiConfig.connectors })
+		// reconnect($wagmiConfig, { connectors: $wagmiConfig.connectors })
+
+		fractl = createFractl({ 
+			namespaces: [ (await starknet()), eip155($wagmiConfig) ]
+		})
+		console.log(fractl.connect())
 	})
 
 	let account
 
-	const connect = async (conf) =>
-		create(conf).then((connect) =>
+
+	/* async (conf) =>
+		createFractl(conf).then((connect) =>
 			connect()
 				.then((res) => {
 					account = {
@@ -27,12 +34,13 @@
 					console.log(res)
 				})
 				.catch((err) => console.error(err))
-		)
+		) */
 </script>
 
 <header>
-	<button on:click={() => connect(evm)}>Connect EVM</button>
-	<button on:click={() => connect(stark)}>Connect Stark</button>
+<!--	
+	<button on:click={connect}>Connect EVM</button>
+<button on:click={() => connect(stark)}>Connect Stark</button>-->
 </header>
 <main>
 	<div class="hero">
@@ -46,10 +54,10 @@
 			</span>
 		</p>
 	</div>
-	{#if account}
-		<AccountModal {...account} />
-	{/if}
 	<!-- 
+	{#if fractl.connected}
+		<AccountModal {fractl} />
+	{/if}
 	Future versions of ConnectModal will not include a button.
 	FractlModal will take care of transitions swapping between connection states. 
 	A reuglar button can also be used to trigger the connect moadal
