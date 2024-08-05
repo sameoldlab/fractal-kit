@@ -1,5 +1,5 @@
 import { http, createConfig, createStorage } from '@wagmi/core'
-import { mock, walletConnect } from '@fractl-ui/evm'
+import { mock, walletConnect } from '@wagmi/connectors'
 import { mainnet, arbitrum } from '@wagmi/core/chains'
 import { readable } from 'svelte/store'
 
