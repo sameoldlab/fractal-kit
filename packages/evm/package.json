@@ -41,7 +41,8 @@
 	},
 	"devDependencies": {
 		"@fractl-ui/types": "workspace:^",
-		"vite-plugin-dts": "^3.7.2",
-		"vite": "^5.3.5"
+		"@usecapsule/web-sdk": "^1.23.0",
+		"vite": "^5.3.5",
+		"vite-plugin-dts": "^3.7.2"
 	}
 }

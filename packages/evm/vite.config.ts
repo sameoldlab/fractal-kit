@@ -18,11 +18,13 @@ export default defineConfig({
 		},
 		rollupOptions: {
 			treeshake: true,
-			external: ['@walletconnect/ethereum-provider', '@wagmi/core', 'viem'],
+			external: ['@walletconnect/ethereum-provider', '@wagmi/core', 'viem', '@usecapsule/web-sdk'],
 			output: {
 				globals: {
 					'@wagmi/core': 'wagmi',
-					'@walletconnect/ethereum-provider': 'walletconnect-ethereum-provider'
+					'@walletconnect/ethereum-provider': 'walletconnect-ethereum-provider',
+					'@usecapsule/web-sdk': 'usecapsule-web-sdk',
+					viem: 'viem'
 				}
 			}
 		}
