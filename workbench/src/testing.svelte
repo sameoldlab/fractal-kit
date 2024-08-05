@@ -1,4 +1,3 @@
-<!-- <svelte:options tag="my-app" /> -->
 <script lang="ts">
 	import 'evm-new'
 	import config from './lib/wagmiConfig'
