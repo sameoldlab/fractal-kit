@@ -67,6 +67,12 @@ export type ConfigConnected<C extends Connector> = {
 }
 
 export type Config<C extends Connector> = {
+	/**
+		CAIP-2 Blockchain ID for the supported blockchain type
+		example namespaces: eip155, cosmos, starknet, bip155, solana
+		https://chainagnostic.org/CAIPs/caip-2
+	*/
+	namespace: string
 	connectors: readonly C[]
 	connect: (connector: C) => Promise<unknown> /* fix later */
 	/**

@@ -33,7 +33,7 @@ type StarknetConnectProps = {
 	resolver: 'STARKNET_ID'
 	clearLastWallet?: boolean | undefined
 }
-export const addStarknetConnection = async (
+export const starknet = async (
 	{
 		starknetVersion,
 		connectors,
@@ -178,6 +178,7 @@ export const addStarknetConnection = async (
 	}
 
 	return {
+		namespace: 'starknet',
 		state: {
 			subscribe: state.subscribe
 		},
@@ -189,7 +190,7 @@ export const addStarknetConnection = async (
 		},
 		connect,
 		reconnect: async (connectors) =>
-			await connectors.forEach(async (c) => await connect(c)),
+			connectors.forEach(async (c) => await connect(c)),
 		disconnect: async () => {
 			await SN.disconnect({ clearLastWallet })
 			state.setKey('current', null)

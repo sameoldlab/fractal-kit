@@ -1,1 +1,1 @@
-export { addStarknetConnection } from './connections.js'
+export { starknet } from './connections.js'

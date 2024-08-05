@@ -17,12 +17,11 @@ import { map } from 'nanostores'
 import { getUri } from './connect.js'
 
 type WagmiConfig = Config<Connector>
-const TYPE = 'eip155'
 
 /**
  * Provides connection details to fractl-modal passed into it's config parameter
  */
-export const addEvmConnection = async (
+export const eip155 = (
 	config: wagmiConfig,
 	{ resolver } = { resolver: 'ENS' }
 ): Promise<WagmiConfig> => {
@@ -114,6 +113,7 @@ export const addEvmConnection = async (
 	}
 
 	return {
+		namespace: 'eip155',
 		state: { subscribe: state.subscribe },
 		accountData: { subscribe: accountData.subscribe },
 		get connectors() {

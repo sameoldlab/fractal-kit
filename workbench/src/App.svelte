@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { addEvmConnection } from '@fractl-ui/evm'
 	import { create } from 'fractl-ui'
 	import { AccountModal } from 'fractl-ui/svelte'
+	import { eip155 } from '@fractl-ui/evm'
+	import { starknet } from '@fractl-ui/starknet'
 	import wagmiConfig from './lib/wagmiConfig'
 	import { onMount } from 'svelte'
 	import { reconnect } from '@wagmi/core'
 	import FractlSvg from './assets/fractl.svg'
 	import './app.css'
-	import { addStarknetConnection } from '@fractl-ui/starknet'
+	const stark = starknet()
 
 	onMount(async () => {
 		reconnect($wagmiConfig, { connectors: $wagmiConfig.connectors })
 	})
-	const stark = addStarknetConnection()
-	const evm = addEvmConnection($wagmiConfig)
+
 	let account
 
 	const connect = async (conf) =>

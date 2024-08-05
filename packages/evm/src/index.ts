@@ -3,4 +3,4 @@ export { mock } from './connectors/mock.js'
 /* Could just delete this folder with new project structure... */
 export { walletConnect } from './connectors/walletConnect.js'
 
-export { addEvmConnection } from './addConnection.js'
+export { eip155 } from './addConnection.js'

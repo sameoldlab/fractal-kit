@@ -19,7 +19,7 @@ type FuelConnectionObj = Config<FuelConnector>
 /**
  * Provides connection details to fractl-modal passed into it's config parameter
  */
-export const addFuel = async (
+export const fuel = async (
 	{ config, providerUrl, autoconnect }: FuelConnectionProps = {
 		autoconnect: true,
 		providerUrl: 'https://beta-5.fuel.network/graphql'
@@ -114,6 +114,7 @@ export const addFuel = async (
 	}
 
 	return {
+		namespace: 'fuel',
 		state: { subscribe: state.subscribe },
 		accountData: { subscribe: accountData.subscribe },
 		get connectors() {
