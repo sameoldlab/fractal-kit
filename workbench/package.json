@@ -21,7 +21,7 @@
 		"@wagmi/connectors": "^5.1.2",
 		"@wagmi/core": "^2.13.1",
 		"fractl-ui": "workspace:^",
-		"svelte": "^4.2.18",
+		"svelte": "5.0.0-next.210",
 		"viem": "^2.18.8",
 		"vite": "^5.3.5",
 		"vitest": "^2.0.5"

@@ -1,12 +1,27 @@
 <script lang="ts">
-	import { createEventDispatcher, onDestroy, tick } from 'svelte'
+	import { onDestroy, tick, type Snippet } from 'svelte'
 	import type { Action } from 'svelte/action'
-	const dispatch = createEventDispatcher()
 
-	export let titleText = 'Title Text'
-	export let customTrigger = false
+	type Props = {
+		titleText?: string
+		customTrigger?: boolean
+		triggerText?: string
+		children: Snippet
+		iconLeft?: Snippet
+		footer?: Snippet
+		onClose: () => void
+	}
 
-	export let triggerText = 'open dialog'
+	let {
+		titleText = 'Title Text',
+		customTrigger = true,
+		triggerText = 'open dialog',
+		children,
+		iconLeft,
+		footer,
+		onClose
+	}: Props = $props()
+
 	let dialog: HTMLDialogElement
 
 	const docOverflow = {
@@ -41,11 +56,9 @@
 
 	export function close() {
 		dialog.close()
-		dispatch('close')
+		onClose()
 	}
-	onDestroy(() => {
-		dispatch('close')
-	})
+	onDestroy(onClose)
 
 	const resize = async () => {
 		const reducedMotion = window.matchMedia(
@@ -67,32 +80,45 @@
 		)
 	}
 	// onMount(resize)
-	$: {
+	$effect.pre(() => {
 		// console.log('contentHeight:', contentHeight)
 		titleText
 		resize()
+	})
+	const self: Action<HTMLDialogElement, () => void> = (el, callback) => {
+		function click(e: MouseEvent) {
+			if (e.target === el) callback()
+		}
+		el.addEventListener('click', click)
+		return {
+			destroy() {
+				el.removeEventListener('click', click)
+			}
+		}
 	}
 </script>
 
-<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <dialog
 	id="fractl-dialog"
 	bind:this={dialog}
-	aria-modal
+	aria-modal="true"
 	aria-labelledby="fcl__dialog-title"
-	on:click|self={close}
+	use:self={close}
 	use:restoreStyles
 	class="fcl__el"
 >
 	<!-- transition:fade={{ duration: 500, easing: quadInOut }} -->
 	<header>
 		<div class="fcl__header-icon">
-			<slot name="icon-left" />
+			{#if iconLeft}
+				{@render iconLeft()}
+			{/if}
 		</div>
 		<h2 id="fcl__dialog-title">{titleText}</h2>
 		<div class="fcl__header-icon">
-			<button on:click={close} aria-label="Close Modal" class="fcl__header-btn">
+			<button onclick={close} aria-label="Close Modal" class="fcl__header-btn">
 				<svg
 					aria-hidden="true"
 					focusable="false"
@@ -113,18 +139,20 @@
 		</div>
 	</header>
 
-	<div class="fcl__dialog-content">
-		<slot />
+	<div id="fcl__dialog-content">
+		{@render children()}
 	</div>
 	<footer class="fcl__dialog-footer">
-		<slot name="footer">
+		{#if footer}
+			{@render footer()}
+		{:else}
 			<!--<div class="spacer"></div>-->
-		</slot>
+		{/if}
 	</footer>
 </dialog>
 
 {#if !customTrigger}
-	<button on:click={open}>{triggerText}</button>
+	<button onclick={open}>{triggerText}</button>
 {/if}
 
 <style>
@@ -200,14 +228,16 @@
 				font-weight: var(--fcl-modal-heading-font-weight, 700);
 			}
 		}
-		& .fcl__dialog-content > *,
 		& .fcl__dialog-footer {
 			padding: var(--inner-padding);
 			padding-block-start: 0;
 			box-sizing: border-box;
 		}
 
-		& .fcl__dialog-content > * {
+		:global(#fcl__dialog-content > *) {
+			padding: var(--inner-padding);
+			padding-block-start: 0;
+			box-sizing: border-box;
 			padding-block-end: 0;
 		}
 	}
@@ -221,7 +251,7 @@
 			inline-size: 100svw;
 		}
 	}
-	.fcl__dialog-content {
+	#fcl__dialog-content {
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;

@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { gradientForAddress } from './lib.js'
-	export let size = '100%'
-	export let address = '0x0000000000000000000000000000000000000000'
-	let classNames = ''
-	export { classNames as class }
+	let {
+		size = '100%',
+		address = '0x0000000000000000000000000000000000000000',
+		title = '',
+		class: classNames = ''
+	} = $props()
 
-	$: gradientInfo = gradientForAddress(address)
+	let gradientInfo = $state(gradientForAddress(address))
 </script>
 
 <svg
@@ -15,7 +17,7 @@
 	viewBox="0 0 100 100"
 	class="avatar {classNames}"
 >
-	<title><slot /></title>
+	<title>{title}</title>
 	<defs>
 		<radialGradient
 			id="gzr"

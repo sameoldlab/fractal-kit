@@ -3,8 +3,11 @@
 	import type { Connector } from '@wagmi/core'
 	import skeleton from './skeletonQr.svg'
 	import { fade } from 'svelte/transition'
-	export let connector: Connector
-	let data: string = ''
+	type Props = {
+		connector: Connector
+		data: string
+	}
+	let { connector, data = '' }: Props = $props()
 
 	try {
 		connector.fractl.getUri((uri) => (data = uri))
@@ -12,7 +15,6 @@
 		console.error(err)
 		// throw Error(err)
 	}
-
 </script>
 
 <div id="fractl-scan" class="fcl__layout-1col fcl__el">
@@ -42,7 +44,7 @@
 		{/if}
 	</div>
 	<button
-		on:click={() => navigator.clipboard.writeText(data)}
+		onclick={() => navigator.clipboard.writeText(data)}
 		class="justify-center fcl__btn-primary">Copy to clipboard</button
 	>
 </div>

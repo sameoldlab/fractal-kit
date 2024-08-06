@@ -10,24 +10,24 @@
 	import { onDestroy } from 'svelte'
 	import type { Readable } from 'svelte/store'
 
-	export let accountData: Readable<AccountData>
-	export let config: ConfigConnected<Connector>
-	export let btnClass: string = ''
+	type Props = {
+		accountData: Readable<AccountData>
+		config: ConfigConnected<Connector>
+		btnClass: string
+	}
+	let { accountData, btnClass = '', config }: Props = $props()
 
-	$: address = $accountData.account?.address
-	$: name = $accountData.nameService?.name
-	$: avatar = $accountData.nameService?.avatar
-	$: balance = $accountData.balance?.value
-	$: symbol = $accountData.balance?.symbol
+	let address = $accountData.account?.address
+	let name = $accountData.nameService?.name
+	let avatar = $accountData.nameService?.avatar
+	let balance = $accountData.balance?.value
+	let symbol = $accountData.balance?.symbol
 
-	let open: () => void
-	let close: () => void
-	onDestroy(() => {
-		close()
-	})
+	let modal: Modal = $state()
+	onDestroy(() => modal.close)
 
 	const handleDisconnect = async (connector: Connector) => {
-		close()
+		modal.close()
 		await config.disconnect(connector)
 	}
 </script>
@@ -38,7 +38,7 @@
 		aria-haspopup="dialog"
 		data-fractl-trigger
 		class="address fcl_el {btnClass}"
-		on:click={open}
+		onclick={modal.open}
 	>
 		{#if avatar}
 			<img class="avatar rounded" src={avatar} alt="" />
@@ -49,7 +49,7 @@
 		{name || truncate(address)}
 	</button>
 
-	<Modal titleText="Connected" bind:open bind:close customTrigger>
+	<Modal titleText="Connected" bind:this={modal} customTrigger>
 		<!-- header>div*2+div.balance+hr+div>div.header -->
 		<div class="fcl__layout-3col fcl__el">
 			{#if avatar}
@@ -58,7 +58,7 @@
 				<Zorb {address} class={'fcl__graphic-primary'} />
 			{/if}
 			<button
-				on:click={() => {
+				onclick={() => {
 					console.log(address)
 					navigator.clipboard.writeText(address)
 				}}
@@ -77,13 +77,13 @@
 			<!-- <br /> -->
 
 			<div class="fcl__3col-full mt-1">
-				<!-- <button on:click>icon</button> -->
-				<!-- <button on:click>icon</button> -->
+				<!-- <button onclick>icon</button> -->
+				<!-- <button onclick>icon</button> -->
 				<!-- </header> -->
-				<!-- <button on:click={handleDisconnect} disabled> Switch</button> -->
+				<!-- <button onclick={handleDisconnect} disabled> Switch</button> -->
 
 				<button
-					on:click={() => handleDisconnect($accountData.account?.connector)}
+					onclick={() => handleDisconnect($accountData.account?.connector)}
 					class="fcl__btn-primary row justify-center"
 				>
 					<!-- prettier-ignore -->

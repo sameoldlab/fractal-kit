@@ -1,6 +1,8 @@
 import { derived, get, writable } from 'svelte/store'
 import ConnectModal from './components/ConnectModal/ConnectModal.svelte'
 import type { Config, Connector, State, StateConnected, StateDisconnected } from '@fractl-ui/types'
+import {unmount, mount} from 'svelte'
+
 export type CreateProps<C extends Connector> = {
 	namespaces: Config<C>[]
 }
@@ -45,18 +47,18 @@ export const createFractl = <C extends Connector>(
 		...config,
 		connect: (): Promise<() => Promise<Config<C>>> => 
 		new Promise((resolve, reject) => {
-			const modal = new ConnectModal({
+			const modal = mount(ConnectModal,{
 				target: getTarget(SINGLETON),
 				props: {
 					config: config,
 					state: config.state,
 					onConnect: (state: Config<C>) => {
 						resolve(state)
-						modal.$destroy()
+						unmount(modal)
 					},
 					onConnectFail: (error) => {
 						reject(error)
-						modal.$destroy()
+						unmount(modal)
 					}
 				}
 			})
