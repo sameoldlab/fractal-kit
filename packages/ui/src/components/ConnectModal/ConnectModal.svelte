@@ -8,6 +8,7 @@
 	import { slide } from 'svelte/transition'
 
 	export let config: Config<Connector>
+	// export let connectors: Config<Connector>['connectors']
 	export let state: Readable<StateDisconnected<Connector>>
 	export let btnClass = ''
 	export let triggerText = 'Connect Wallet'
@@ -41,7 +42,7 @@
 		} catch (error) {
 			console.error(error)
 			// onConnectFail(error)
-			throw error
+			// throw error
 		}
 
 		// console.debug('config.state: ', $state.status)
@@ -129,7 +130,7 @@
 	{:else}
 		<div id="fractl-connect" class="fcl__layout-1col fcl__el">
 			<div class="connectors">
-				{#each config.connectors.toReversed() as connector}
+				{#each config.connectors as [ns, connector]}
 					<button
 						on:click={() => handleConnect(connector)}
 						data-uid={connector.uid}

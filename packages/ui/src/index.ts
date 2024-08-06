@@ -1,6 +1,6 @@
-import { writable } from 'svelte/store'
+import { derived, get, writable } from 'svelte/store'
 import ConnectModal from './components/ConnectModal/ConnectModal.svelte'
-import type { Config, Connector } from '@fractl-ui/types'
+import type { Config, Connector, State, StateConnected, StateDisconnected } from '@fractl-ui/types'
 export type CreateProps<C extends Connector> = {
 	namespaces: Config<C>[]
 }
@@ -8,19 +8,41 @@ export const createFractl = <C extends Connector>(
 	{namespaces, ...props}: CreateProps<C>
 ) => {
 	const connectors = new Map(namespaces.map(c => [c.namespace, c.connectors]))
-	console.log(connectors)
+	const connections = new Map()
 	const SINGLETON = 'fractl-connect'
-	// Change this to a flat array
-	const connectorArr = [...connectors.values()].flat(1)
-	const state = writable({
-		status: 'disconnected'
+	const connectorArr = [...connectors.entries()].flatMap(([chain, config]) => config.map(c=> [chain, c]) )
+	console.log(connectorArr)
+	const state = derived(namespaces.map(c => c.state), ($state, set) => {
+		const t = $state.reduce((acc, curr) => {
+			// No change if already connected, else return the first state with an active status
+			// Active ranking: 1. connected 2. reconnecting 3. connecting 4. disconnected
+			if  (acc.status === 'connected') return acc
+			if  (curr.status === 'connected') return curr
+			if  (curr.status === 'connecting' || curr.status === 'reconnecting') return curr
+			return {
+				current: null,
+				status:'disconnected'
+			}
+		})
+		console.log(t)
+		set(t)
+	}, Object.freeze({
+				current: null,
+				status:'disconnected'
+			} satisfies State<C>))
+	let isConnected = false
+	state.subscribe($s => {
+		isConnected = $s.status === 'connected'
 	})
 	const config = {
 		connectors: connectorArr,
-		state
+		state,
+		isConnected
 	}
 
+
 	return {
+		...config,
 		connect: (): Promise<() => Promise<Config<C>>> => 
 		new Promise((resolve, reject) => {
 			const modal = new ConnectModal({

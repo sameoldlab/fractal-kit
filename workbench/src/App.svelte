@@ -1,14 +1,13 @@
 <script lang="ts">
+	import './app.css'
+	import FractlSvg from './assets/fractl.svg'
+	import { onMount } from 'svelte'
+	import { reconnect } from '@wagmi/core'
+	import wagmiConfig from './lib/wagmiConfig'
+	import { AccountModal } from './fractl/components'
 	import { eip155 } from '@fractl-ui/evm'
 	import { starknet } from '@fractl-ui/starknet'
 	import { createFractl } from './fractl'
-	import { AccountModal } from './fractl/components'
-	import wagmiConfig from './lib/wagmiConfig'
-	import { onMount } from 'svelte'
-	import { reconnect } from '@wagmi/core'
-	import FractlSvg from './assets/fractl.svg'
-	import './app.css'
-	const stark = starknet()
 
 	let fractl
 	onMount(async () => {
@@ -17,7 +16,10 @@
 		fractl = createFractl({ 
 			namespaces: [ (await starknet()), eip155($wagmiConfig) ]
 		})
-		console.log(fractl.connect())
+		await fractl.connect()
+		const {state} = fractl
+		console.log(state)
+		fractl = fractl
 	})
 
 	let account
@@ -54,10 +56,13 @@
 			</span>
 		</p>
 	</div>
-	<!-- 
-	{#if fractl.connected}
-		<AccountModal {fractl} />
+	{#if fractl }
+		{@const state = fractl.state}
+		{state.status}
+		connected
 	{/if}
+	<!--
+		<AccountModal {fractl} />
 	Future versions of ConnectModal will not include a button.
 	FractlModal will take care of transitions swapping between connection states. 
 	A reuglar button can also be used to trigger the connect moadal
