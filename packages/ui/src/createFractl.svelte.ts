@@ -57,23 +57,17 @@ export const createFractl = <C extends Connector>({
 		state = $s
 		console.log($state.snapshot(state))
 	})
-
+		
 	const isConnected = $derived(state.status === 'connected')
 
 	return {
-		get connectors() {
-			return connectorArr
-		},
-		get connections() {
-			return connections
-		},
-		get isConnected() {
-			return isConnected
-		},
+		get connectors() {return connectorArr},
+		get connections() {return connections},
+		get isConnected() {return isConnected},
 		connect: (): Promise<() => Promise<Config<C>>> =>
 			new Promise((resolve, reject) => {
-				if (isConnected) reject('Already Connected')
-
+				if(isConnected) reject('Already Connected')
+					
 				const modal = mount(ConnectModal, {
 					target: getTarget(SINGLETON),
 					props: {
