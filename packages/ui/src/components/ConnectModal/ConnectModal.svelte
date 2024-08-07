@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onDestroy, onMount, type Snippet } from 'svelte'
-	import type { Readable } from 'svelte/store'
 	import { slide } from 'svelte/transition'
 	import copyEN from '../../copy/copy.EN.js'
 	import Modal from '../Common/Modal.svelte'
@@ -9,25 +8,24 @@
 
 	// export let connectors: Config<Connector>['connectors']
 	type Props = {
-		config: Config<Connector>
-		state: Readable<StateDisconnected<Connector>>
+		connectors: [string, Connector][]
+		state: StateDisconnected<Connector>
 		btnClass: string
 		triggerText: string
-		onConnect: (fractl: Config<Connector>) => void
-		onConnectFail: (error: unknown) => void
+		onSuccess: (msg:{namespace: string, connector: Connector}) => void
+		onFailure: (error: unknown) => void
 		footer?: Snippet
 	}
 
 	let {
-		config,
-		state: _state,
+		connectors,
+		state: fclState,
 		btnClass = '',
 		triggerText = 'Connect',
-		onConnect,
-		onConnectFail,
-		footer: disclaimer
+		footer: disclaimer,
+		onSuccess,
+		onFailure
 	}: Props = $props()
-	const { status } = $_state
 	let modal: Modal = $state()
 
 	// export let demo = true
@@ -41,24 +39,21 @@
 	onDestroy(() => {
 		modal.close()
 	})
-	$effect(() => {
-		if (status === 'connected') modal.close()
-	})
 
 	let activeRequest: Connector | undefined = $state() //config.connectors[3]
 	let title = $derived(!activeRequest ? 'Connect Wallet' : activeRequest.name)
+	// let title = $derived(fState.status)
 
-	const handleConnect = async (connector: Connector) => {
+	const handleConnect = async (connector: Connector, namespace: string) => {
 		// await config.reconnect([connector])
 		try {
 			// console.debug('config.state: ', status)
 			activeRequest = connector
 			await connector.fractl.connect()
-			// onConnect(config)
+			modal.close()
+			onSuccess({namespace, connector})
 		} catch (error) {
-			console.error(error)
-			// onConnectFail(error)
-			// throw error
+			onFailure(error)
 		}
 
 		// console.debug('config.state: ', status)
@@ -108,7 +103,7 @@
 			<div id="fractl-injected" class="fcl__layout-1col fcl__el">
 				<div class="fcl__graphic-primary">
 					<!-- prettier-ignore -->
-					<svg class:hide={status !== 'connecting' && status !== 'reconnecting'} class="spin" width="108" height="108" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" > 
+					<svg class:hide={fclState.status !== 'connecting' && fclState.status !== 'reconnecting'} class="spin" width="108" height="108" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" > 
 						<path d="M98 50C98 23.4903 76.5097 2 50 2" stroke="url(#a)" stroke-width="4" stroke-linecap="round" /> 
 						<defs> 
 							<radialGradient id="radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(100 50) rotate(-90) scale(47 47)" > <stop stop-color="currentColor" /> <stop offset="1" stop-color="currentColor" stop-opacity="0" /> </radialGradient> 
@@ -122,7 +117,7 @@
 					/>
 				</div>
 
-				{#if status === 'connecting' || status === 'reconnecting'}
+				{#if fclState.status === 'connecting' || fclState.status === 'reconnecting'}
 					<h3 class="fcl__text-primary">Requesting Connection</h3>
 					<p class="fcl__text-secondary">
 						{copyEN(activeRequest.name).connecting[activeRequest.type]}
@@ -145,10 +140,10 @@
 	{:else}
 		<div id="fractl-connect" class="fcl__layout-1col fcl__el">
 			<div class="connectors">
-				{#each config.connectors as [ns, connector]}
+				{#each connectors as [namespace, connector]}
 					<button
-						onclick={() => handleConnect(connector)}
-						data-uid={connector.uid}
+						onclick={() => handleConnect(connector, namespace)}
+						data-uid={connector.id}
 						class="fcl__btn-primary connector justify-between {connector.type}"
 					>
 						{connector.name}

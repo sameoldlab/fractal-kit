@@ -1,12 +1,6 @@
 import { derived } from 'svelte/store'
 import ConnectModal from './components/ConnectModal/ConnectModal.svelte'
-import type {
-	Config,
-	Connector,
-	State,
-	StateConnected,
-	StateDisconnected
-} from '@fractl-ui/types'
+import type { Config, Connector, State } from '@fractl-ui/types'
 import { unmount, mount } from 'svelte'
 import { SvelteMap } from 'svelte/reactivity'
 const SINGLETON = 'fractl-connect'
@@ -14,6 +8,12 @@ const SINGLETON = 'fractl-connect'
 export type CreateProps<C extends Connector> = {
 	namespaces: Config<C>[]
 }
+
+class FractlState<C extends Connector> {
+	status: State<C>['status'] = $state('disconnected')
+	current: State<C>['current'] = $state(null)
+}
+
 export const createFractl = <C extends Connector>({
 	namespaces,
 	...props
@@ -21,7 +21,9 @@ export const createFractl = <C extends Connector>({
 	const connectors = new SvelteMap(
 		namespaces.map((c) => [c.namespace, c.connectors])
 	)
-	const connections = new Map(namespaces.map((c) => [c.namespace, []]))
+	const connections = new Map(
+		namespaces.map((c) => [c.namespace, []] as [string, C[]])
+	)
 	const connectorArr = [...connectors.entries()].flatMap(([chain, config]) =>
 		config.map((c) => [chain, c] satisfies [string, C])
 	)
@@ -34,13 +36,12 @@ export const createFractl = <C extends Connector>({
 				// No change if already connected, else return the first state with an active status
 				// Active ranking: 1. connected 2. reconnecting 3. connecting 4. disconnected
 				if (acc.status === 'connected') return acc
+				if (acc.status === 'connecting' || acc.status === 'reconnecting')
+					return acc
 				if (curr.status === 'connected') return curr
 				if (curr.status === 'connecting' || curr.status === 'reconnecting')
 					return curr
-				return {
-					current: null,
-					status: 'disconnected'
-				}
+				return curr
 			})
 			set(t)
 		},
@@ -49,37 +50,42 @@ export const createFractl = <C extends Connector>({
 			status: 'disconnected'
 		} as State<C>
 	)
-	let state = $state({
-		current: null,
-		status: 'disconnected'
-	} satisfies State<C>)
+	const fState = new FractlState()
 	stateStore.subscribe(($s) => {
-		state = $s
-		console.log($state.snapshot(state))
+		fState.status = $s.status
+		fState.current = $s.current
 	})
-		
-	const isConnected = $derived(state.status === 'connected')
+
+	const isConnected = $derived(fState.status === 'connected')
 
 	return {
-		get connectors() {return connectorArr},
-		get connections() {return connections},
-		get isConnected() {return isConnected},
-		connect: (): Promise<() => Promise<Config<C>>> =>
-			new Promise((resolve, reject) => {
-				if(isConnected) reject('Already Connected')
-					
+		get connectors() {
+			return connectorArr
+		},
+		get connections() {
+			return connections
+		},
+		get isConnected() {
+			return isConnected
+		},
+		connect: () =>
+			new Promise<void>((resolve, reject) => {
+				if (fState.status === 'connected') {
+					return reject('Already Connected')
+				}
+
 				const modal = mount(ConnectModal, {
 					target: getTarget(SINGLETON),
 					props: {
 						connectors: connectorArr,
-						state: stateStore,
-						onConnect: (state: Config<C>) => {
-							resolve(state)
+						state: fState,
+						onSuccess: (msg) => {
+							connections.get(msg.namespace)?.push(msg.connector)
 							unmount(modal)
+							resolve()
 						},
-						onConnectFail: (error) => {
+						onFailure: (error) => {
 							reject(error)
-							unmount(modal)
 						}
 					}
 				})
