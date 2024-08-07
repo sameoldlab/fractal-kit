@@ -162,19 +162,19 @@ export const starknet = async (
 		}
 	}
 
-	const connect = async (connector = connectors[0]) => {
+	const connect = (connector = connectors[0]) => async () => {
 		if (connector === undefined) return
 		/* Connect and reconnect are effectively the same thing as this does not keep a history of existing connections */
 		// if (connector?.isConnected) throw Error('already connected')
 		state.setKey('activeRequest', connector)
-
-		return SN.enable(connector, { starknetVersion })
-			.catch((e) => Error(e))
-			.then((res) => res)
-			.finally(() => {
-				state.setKey('activeRequest', null)
-				setCurrent(connector)
-			})
+		try {
+			await SN.enable(connector, { starknetVersion })
+		} catch (e) {
+			 Error(e)
+		} finally {
+			state.setKey('activeRequest', null)
+			setCurrent(connector)
+		}
 	}
 
 	return {
@@ -186,11 +186,17 @@ export const starknet = async (
 			subscribe: accountData.subscribe
 		},
 		get connectors() {
-			return connectors
+			const conn = connectors.map(c => {
+				c.fractl = {connect: {}}
+
+				c.fractl.connect = connect(c)
+				return c
+			})
+			return conn
 		},
-		connect,
-		reconnect: async (connectors) =>
-			connectors.forEach(async (c) => await connect(c)),
+		// connect,
+		// reconnect: async (connectors) =>
+			// connectors.forEach(async (c) => await connect(c)),
 		disconnect: async () => {
 			await SN.disconnect({ clearLastWallet })
 			state.setKey('current', null)
