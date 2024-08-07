@@ -40,6 +40,10 @@ export type Connector<T = object> = {
 	name: string
 	type?: string
 	icon?: string
+	fractl: {
+		getUri?: () => void
+		connect: () => Promise<void>
+	}
 } & T
 
 export type StateConnected<Connector> = {
@@ -74,14 +78,14 @@ export type Config<C extends Connector> = {
 	*/
 	namespace: string
 	connectors: readonly C[]
-	connect: (connector: C) => Promise<unknown> /* fix later */
+	// connect: (connector: C) => Promise<unknown> /* fix later */
 	/**
 	 * Checks if a connector in the list is already connected
 	 * then sets the first one found as the current Connector
 	 * @param {C[]} connectors list of Connectors for the given library
 	 * @returns
 	 */
-	reconnect: (connectors: C[]) => Promise<void>
+	// reconnect: (connectors: C[]) => Promise<void>
 	disconnect: (connector?: C, opts?: object) => Promise<void>
 } & (ConfigDisconnected<C> | ConfigConnected<C>)
 
