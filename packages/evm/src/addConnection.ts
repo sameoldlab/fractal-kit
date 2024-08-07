@@ -24,7 +24,7 @@ type WagmiConfig = Config<Connector>
 export const eip155 = (
 	config: wagmiConfig,
 	{ resolver } = { resolver: 'ENS' }
-): Promise<WagmiConfig> => {
+): WagmiConfig => {
 
 	
 	const state = map({
