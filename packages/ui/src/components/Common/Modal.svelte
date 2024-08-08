@@ -19,7 +19,7 @@
 		children,
 		iconLeft,
 		footer,
-		onClose
+		onClose = () => null
 	}: Props = $props()
 
 	let dialog: HTMLDialogElement
