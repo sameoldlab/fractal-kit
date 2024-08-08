@@ -1,34 +1,38 @@
 <script lang="ts">
 	import { truncate } from '../utils.js'
-	import type {
-		AccountData,
-		ConfigConnected,
-		Connector
-	} from '@fractl-ui/types'
+	import type { Connector } from '@fractl-ui/types'
 	import Zorb from './zorb/Zorb.svelte'
 	import Modal from './Common/Modal.svelte'
 	import { onDestroy } from 'svelte'
-	import type { Readable } from 'svelte/store'
+	import { disconnect, getAccount } from  '../api/index.js'
+	import ConnectModal from './ConnectModal/ConnectModal.svelte'
 
 	type Props = {
-		accountData: Readable<AccountData>
-		config: ConfigConnected<Connector>
-		btnClass: string
+		connection: {
+			address: string,
+			namespace: string,
+			connector: Connector
+		}
+		btnClass?: string
 	}
-	let { accountData, btnClass = '', config }: Props = $props()
+	let { connection, btnClass = '' }: Props = $props()
 
-	let address = $accountData.account?.address
-	let name = $accountData.nameService?.name
-	let avatar = $accountData.nameService?.avatar
-	let balance = $accountData.balance?.value
-	let symbol = $accountData.balance?.symbol
+	const {
+		address,
+		nameService: {
+			name,
+			avatar,
+		},
+		balance 
+	} = $derived(getAccount({...connection}))
 
 	let modal: Modal = $state()
 	onDestroy(() => modal.close)
 
-	const handleDisconnect = async (connector: Connector) => {
+	const handleDisconnect = async () => {
+		// await config.disconnect(connector)
+		await disconnect({...connection})
 		modal.close()
-		await config.disconnect(connector)
 	}
 </script>
 
@@ -72,7 +76,7 @@
 			</button>
 
 			<span class="fcl__text-secondary"
-				>{balance ? `${balance.substring(0, 7)} ${symbol}` : 0}</span
+				>{balance ? `${balance.substring(0, 7)} ${balance.symbol}` : 0}</span
 			>
 			<!-- <br /> -->
 
@@ -83,7 +87,7 @@
 				<!-- <button onclick={handleDisconnect} disabled> Switch</button> -->
 
 				<button
-					onclick={() => handleDisconnect($accountData.account?.connector)}
+					onclick={() => handleDisconnect()}
 					class="fcl__btn-primary row justify-center"
 				>
 					<!-- prettier-ignore -->
