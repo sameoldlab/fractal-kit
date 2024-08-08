@@ -169,8 +169,6 @@ export const starknet = async (
 		state.setKey('activeRequest', connector)
 		try {
 			await SN.enable(connector, { starknetVersion })
-		} catch (e) {
-			 Error(e)
 		} finally {
 			state.setKey('activeRequest', null)
 			setCurrent(connector)
@@ -188,7 +186,6 @@ export const starknet = async (
 		get connectors() {
 			const conn = connectors.map(c => {
 				c.fractl = {connect: {}}
-
 				c.fractl.connect = connect(c)
 				return c
 			})
