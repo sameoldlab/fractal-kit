@@ -3,16 +3,78 @@ import ConnectModal from './components/ConnectModal/ConnectModal.svelte'
 import type { AccountData, Config, Connector, State } from '@fractl-ui/types'
 import { unmount, mount } from 'svelte'
 import { SvelteMap } from 'svelte/reactivity'
+import { FiniteStateMachine } from './utils/stateMachine.svelte.js'
+import svelteFsm from './utils/svelte-fsm.js'
 const SINGLETON = 'fractl-connect'
 
-export type CreateProps<C extends Connector> = {
-	namespaces: Config<C>[]
+export type CreateProps = {
+	namespaces: Config<Connector>[]
 }
 type Connection = {
-	address: string,
-	chain_id: {namespace: string, reference: string}
+	address: string
+	chain_id: { namespace: string; reference: string }
 	connector: Connector
 }
+
+type States = 'connected' | 'connecting' | 'disconnected'
+export function createFractl2({ namespaces }: CreateProps) {
+	const adapters = new Map(namespaces.map((ns) => [ns.namespace, ns]))
+	const connections = new Map()
+
+	const machine = {
+		connected: {
+			getCurrent(namespace: string | undefined) {},
+			disconnect(connector: Connector) {
+				return 'disconnected'
+			}
+		},
+		connecting: {
+			_enter(params) {
+				console.log(params)
+			}
+		},
+		disconnected: {
+			reconnect({
+				namespace,
+				connector
+			}: {
+				namespace: string | undefined
+				connector: Connector | undefined
+			}) {
+				const adapter = namespace
+					? adapters.get(namespace)
+					: [...adapters.values()][0]
+				if (!adapter) return
+				adapter.reconnect(connector)
+				return 'connecting'
+			},
+			connect({
+				namespace,
+				connector
+			}: {
+				namespace: string | undefined
+				connector: Connector | undefined
+			}) {
+				const adapter = namespace
+					? adapters.get(namespace)
+					: [...adapters.values()][0]
+				if (!adapter) return
+				adapter.connect(connector)
+				return 'connecting'
+			},
+			_enter() {
+				/* If reconnect === true check for existing connections on initialization */
+			}
+		},
+		'*': {
+			call(namespace: string, action: 'disconnect', ...args) {
+				return adapters.get(namespace)?.[action](args)
+			}
+		}
+	}
+	return svelteFsm('disconnected', machine)
+}
+
 class FractlState<C extends Connector> {
 	status: State<C>['status'] = $state('disconnected')
 	current: Connection | undefined = $state()
@@ -36,14 +98,16 @@ export const createFractl = <C extends Connector>({
 	...props
 }: CreateProps<C>) => {
 	const connectors = new SvelteMap<string, readonly C[]>()
-	/** 
-	* Maps wallets within a namespace by random hash. 
-	* Considered address+walletId, but not sure if this is actually unique
-	*/// But yes a nested map is a bit odd, and might affect reactivity
+	/**
+	 * Maps wallets within a namespace by random hash.
+	 * Considered address+walletId, but not sure if this is actually unique
+	 */ // But yes a nested map is a bit odd, and might affect reactivity
 	const connections = new Map(
-		namespaces.map((c) => [c.namespace, new Map()] as [string, Map<string, Connection>])
+		namespaces.map(
+			(c) => [c.namespace, new Map()] as [string, Map<string, Connection>]
+		)
 	)
-	namespaces.forEach(ns => {
+	namespaces.forEach((ns) => {
 		connectors.set(ns.namespace, ns.connectors)
 		actions.namespaces.set(ns.namespace, {
 			disconnect: ns.disconnect,
@@ -110,7 +174,16 @@ export const createFractl = <C extends Connector>({
 						connectors: connectorArr,
 						state: fState,
 						onSuccess: (msg) => {
-							connections.get(msg.namespace)?.push(msg.connector)
+							connections.get(msg.namespace)?.set(msg.connector.uid, {
+								address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+								namespace: 'eip155',
+								connector: msg.connector
+							})
+							fState.current = {
+								address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+								namespace: 'eip155',
+								connector: msg.connector
+							}
 							unmount(modal)
 							resolve()
 						},
@@ -126,17 +199,40 @@ export const createFractl = <C extends Connector>({
 // export T&C text prop
 /*
 {
-	status: 'connecting' | 'disconnected' | 'reconnecting' | 'connected'
-	primaryAccount: Account
-	accounts: [
-		address: ''
-		balance
-		name
-		avatar
-		wallet
-	]
-	connectors
+	connectors: Map<nmspc, Connector>
+	connections: Map<uid, Connection>
+} & (
+ | {
+		status: 'connected'
+		current: Connection
+	} | {
+		status: 'connecting' | 'disconnected' | 'reconnecting' 
+		current: null,
+	}
+)
+actions: Map< nmspc,  {
+	getAccount(address, opts: {
+		nameService: string | function,
+		watchBalance: boolean
+	}),
+	disconnect,
+	connect???
+	transaction history...
+}: any: () => F
+>
+
+type Connection = {
+	address: string,
+	namespace: string,
+	connector: Connector
 }
+
+accounts: [
+	address: ''
+	balance
+	name
+	avatar
+]
 */
 function getTarget(id: string) {
 	const el = document.getElementById(id)
@@ -150,3 +246,24 @@ function getTarget(id: string) {
 
 	return target
 }
+
+type MyStates = "disabled" | "idle" | "running";
+type MyEvents = "toggleEnabled" | "start" | "stop";
+const f = new FiniteStateMachine<MyStates, MyEvents>("disabled", {
+  disabled: {
+    toggleEnabled: "idle"
+  },
+  idle: {
+    toggleEnabled: "disabled",
+    start: "running"
+  },
+  running: {
+    _enter: () => {
+      f.debounce(2000, "stop");
+    },
+    stop: "idle",
+    toggleEnabled: "disabled"
+  }
+});
+
+f
