@@ -1,6 +1,6 @@
-import { derived } from 'svelte/store'
+import { derived, get } from 'svelte/store'
 import ConnectModal from './components/ConnectModal/ConnectModal.svelte'
-import type { Config, Connector, State } from '@fractl-ui/types'
+import type { AccountData, Config, Connector, State } from '@fractl-ui/types'
 import { unmount, mount } from 'svelte'
 import { SvelteMap } from 'svelte/reactivity'
 const SINGLETON = 'fractl-connect'
@@ -8,22 +8,49 @@ const SINGLETON = 'fractl-connect'
 export type CreateProps<C extends Connector> = {
 	namespaces: Config<C>[]
 }
-
+type Connection = {
+	address: string,
+	chain_id: {namespace: string, reference: string}
+	connector: Connector
+}
 class FractlState<C extends Connector> {
 	status: State<C>['status'] = $state('disconnected')
-	current: State<C>['current'] = $state(null)
+	current: Connection | undefined = $state()
 }
+
+type Actions<C extends Connector> = {
+	getAccount: () => AccountData
+	disconnect: (connector: C) => Promise<void>
+}
+class FractlActions<C extends Connector> {
+	namespaces = new SvelteMap<string, Actions<C>>()
+
+	get(namespace: string) {
+		return this.namespaces.get(namespace)
+	}
+}
+export const actions = new FractlActions()
 
 export const createFractl = <C extends Connector>({
 	namespaces,
 	...props
 }: CreateProps<C>) => {
-	const connectors = new SvelteMap(
-		namespaces.map((c) => [c.namespace, c.connectors])
-	)
+	const connectors = new SvelteMap<string, readonly C[]>()
+	/** 
+	* Maps wallets within a namespace by random hash. 
+	* Considered address+walletId, but not sure if this is actually unique
+	*/// But yes a nested map is a bit odd, and might affect reactivity
 	const connections = new Map(
-		namespaces.map((c) => [c.namespace, []] as [string, C[]])
+		namespaces.map((c) => [c.namespace, new Map()] as [string, Map<string, Connection>])
 	)
+	namespaces.forEach(ns => {
+		connectors.set(ns.namespace, ns.connectors)
+		actions.namespaces.set(ns.namespace, {
+			disconnect: ns.disconnect,
+			getAccount: () => get(ns.accountData)
+		})
+	})
+
 	const connectorArr = [...connectors.entries()].flatMap(([chain, config]) =>
 		config.map((c) => [chain, c] satisfies [string, C])
 	)
@@ -59,6 +86,9 @@ export const createFractl = <C extends Connector>({
 	const isConnected = $derived(fState.status === 'connected')
 
 	return {
+		get state() {
+			return fState
+		},
 		get connectors() {
 			return connectorArr
 		},
