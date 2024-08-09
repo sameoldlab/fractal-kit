@@ -30,7 +30,6 @@ type StarknetConnectProps = {
 	autoconnect: boolean
 
 	provider: RpcProvider
-	resolver: 'STARKNET_ID'
 	clearLastWallet?: boolean | undefined
 }
 export const starknet = async (
@@ -39,7 +38,6 @@ export const starknet = async (
 		connectors,
 		autoconnect,
 		provider,
-		resolver,
 		clearLastWallet
 	}: StarknetConnectProps = {
 		starknetVersion: 'v5',
@@ -48,8 +46,7 @@ export const starknet = async (
 		provider: new RpcProvider({
 			nodeUrl: constants.RPC_MAINNET_NODES[0],
 			retries: 2
-		}),
-		resolver: 'STARKNET_ID'
+		})
 	}
 ): Promise<Config<SNProvider>> => {
 	/* Check if user passed in any connectors. If empty get connectors from preauthorized wallets. */
@@ -98,94 +95,65 @@ export const starknet = async (
 		}
 	}
 
-	/* Manage Account Data */
-	const accountData = map({
-		account: null,
-		balance: null,
-		nameService: {
-			name: null,
-			avatar: null
-		}
-	}) satisfies MapStore<AccountData>
-
-	state.subscribe(
-		($s, changedKey) =>
-			changedKey === 'status' && updateAccount($s.status, $s.current)
-	)
-
-	async function updateAccount(
-		status: 'connected' | 'connecting' | 'disconnected' | 'reconnecting',
-		current: ConnectedStarknetWindowObject | null
-	) {
-		if (status !== 'connected' || !current) {
-			accountData.setKey('account', null)
-			accountData.setKey('balance', null)
-			accountData.setKey('nameService', { name: null, avatar: null })
-			return
-		}
-
-		const account = {
-			address: current.selectedAddress as `0x${string}`,
-			addresses: [current.selectedAddress] as `0x${string}`[]
-		}
-		accountData.setKey('account', account)
-
-		try {
-			const eth = new Contract(ethABI, ETH_ADDR, defaultProvider)
-			const balance = await eth.balanceOf(account.address)
-
-			accountData.setKey('balance', {
-				value: formatUnits(balance, DECIMALS),
-				symbol: 'ETH'
-			})
-
-			let name, avatar
-
-			switch (resolver) {
-				default:
-					name = await provider.getStarkName(account.address)
-					avatar = null
-				/* name &&
-						(await getEnsAvatar(config, {
-							name,
-							blockTag: 'finalized'
-						})) */
+	type WatchAccountProps = { address: `0x${string}`; resolver?: string }
+	const watchAccount = ({ address, resolver }: WatchAccountProps) => {
+		resolver = resolver ?? 'STARKNET_ID'
+		const account = map<AccountData>({
+			address,
+			balance: null,
+			nameService: {
+				name: null,
+				avatar: null
 			}
+		})
+		;(async function () {
+			try {
+				const eth = new Contract(ethABI, ETH_ADDR, defaultProvider)
+				const balance = await eth.balanceOf(address)
 
-			// accountData.setKey('account', account)
-			accountData.setKey('nameService', { name, avatar })
+				account.setKey('balance', {
+					value: formatUnits(balance, DECIMALS),
+					symbol: 'ETH'
+				})
 
-			// console.log(accountData.get())
-		} catch (error) {
-			// console.log(accountData.get())
-			console.error('fetch error', error)
-		}
+				let name,
+					avatar = null
+				switch (resolver) {
+					default:
+						name = await provider.getStarkName(address)
+				}
+				account.setKey('nameService', { name, avatar })
+				console.debug(account.get())
+			} catch (error) {
+				console.error('fetch error', error, account.get())
+			}
+		})()
+		return account
 	}
 
-	const connect = (connector = connectors[0]) => async () => {
-		if (connector === undefined) return
-		/* Connect and reconnect are effectively the same thing as this does not keep a history of existing connections */
-		// if (connector?.isConnected) throw Error('already connected')
-		state.setKey('activeRequest', connector)
-		try {
-			await SN.enable(connector, { starknetVersion })
-		} finally {
-			state.setKey('activeRequest', null)
-			setCurrent(connector)
+	const connect =
+		(connector = connectors[0]) =>
+		async () => {
+			if (connector === undefined) return
+			/* Connect and reconnect are effectively the same thing as this does not keep a history of existing connections */
+			// if (connector?.isConnected) throw Error('already connected')
+			state.setKey('activeRequest', connector)
+			try {
+				await SN.enable(connector, { starknetVersion })
+			} finally {
+				state.setKey('activeRequest', null)
+				setCurrent(connector)
+			}
 		}
-	}
 
 	return {
 		namespace: 'starknet',
 		state: {
 			subscribe: state.subscribe
 		},
-		accountData: {
-			subscribe: accountData.subscribe
-		},
 		get connectors() {
-			const conn = connectors.map(c => {
-				c.fractl = {connect: {}}
+			const conn = connectors.map((c) => {
+				c.fractl = { connect: {} }
 				c.fractl.connect = connect(c)
 				return c
 			})
@@ -193,7 +161,8 @@ export const starknet = async (
 		},
 		// connect,
 		// reconnect: async (connectors) =>
-			// connectors.forEach(async (c) => await connect(c)),
+		// connectors.forEach(async (c) => await connect(c)),
+		watchAccount,
 		disconnect: async () => {
 			await SN.disconnect({ clearLastWallet })
 			state.setKey('current', null)

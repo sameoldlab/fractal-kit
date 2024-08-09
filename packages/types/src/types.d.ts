@@ -5,7 +5,7 @@ type Store<T extends object> = {
 }
 
 export type AccountDataError = {
-	account: null
+	address: string
 	balance: null
 	nameService: {
 		name: null
@@ -14,10 +14,7 @@ export type AccountDataError = {
 }
 
 export type AccountDataResponse = {
-	account: {
-		address: string
-		addresses: string[]
-	}
+	address: string
 	balance: {
 		value: string
 		symbol: string
