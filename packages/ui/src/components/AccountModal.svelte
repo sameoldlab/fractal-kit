@@ -1,34 +1,38 @@
 <script lang="ts">
 	import { truncate } from '../utils.js'
-	import type {
-		AccountData,
-		ConfigConnected,
-		Connector
-	} from '@fractl-ui/types'
+	import type { Connector } from '@fractl-ui/types'
 	import Zorb from './zorb/Zorb.svelte'
 	import Modal from './Common/Modal.svelte'
 	import { onDestroy } from 'svelte'
-	import type { Readable } from 'svelte/store'
+	import { disconnect, getAccount } from  '../api/index.js'
+	import ConnectModal from './ConnectModal/ConnectModal.svelte'
 
-	export let accountData: Readable<AccountData>
-	export let config: ConfigConnected<Connector>
-	export let btnClass: string = ''
+	type Props = {
+		connection: {
+			address: string,
+			namespace: string,
+			connector: Connector
+		}
+		btnClass?: string
+	}
+	let { connection, btnClass = '' }: Props = $props()
 
-	$: address = $accountData.account?.address
-	$: name = $accountData.nameService?.name
-	$: avatar = $accountData.nameService?.avatar
-	$: balance = $accountData.balance?.value
-	$: symbol = $accountData.balance?.symbol
+	const {
+		address,
+		nameService: {
+			name,
+			avatar,
+		},
+		balance 
+	} = $derived(getAccount({...connection}))
 
-	let open: () => void
-	let close: () => void
-	onDestroy(() => {
-		close()
-	})
+	let modal: Modal = $state()
+	onDestroy(() => modal.close)
 
-	const handleDisconnect = async (connector: Connector) => {
-		close()
-		await config.disconnect(connector)
+	const handleDisconnect = async () => {
+		// await config.disconnect(connector)
+		await disconnect({...connection})
+		modal.close()
 	}
 </script>
 
@@ -38,7 +42,7 @@
 		aria-haspopup="dialog"
 		data-fractl-trigger
 		class="address fcl_el {btnClass}"
-		on:click={open}
+		onclick={modal.open}
 	>
 		{#if avatar}
 			<img class="avatar rounded" src={avatar} alt="" />
@@ -49,7 +53,7 @@
 		{name || truncate(address)}
 	</button>
 
-	<Modal titleText="Connected" bind:open bind:close customTrigger>
+	<Modal titleText="Connected" bind:this={modal} customTrigger>
 		<!-- header>div*2+div.balance+hr+div>div.header -->
 		<div class="fcl__layout-3col fcl__el">
 			{#if avatar}
@@ -58,7 +62,7 @@
 				<Zorb {address} class={'fcl__graphic-primary'} />
 			{/if}
 			<button
-				on:click={() => {
+				onclick={() => {
 					console.log(address)
 					navigator.clipboard.writeText(address)
 				}}
@@ -72,18 +76,18 @@
 			</button>
 
 			<span class="fcl__text-secondary"
-				>{balance ? `${balance.substring(0, 7)} ${symbol}` : 0}</span
+				>{balance ? `${balance.substring(0, 7)} ${balance.symbol}` : 0}</span
 			>
 			<!-- <br /> -->
 
 			<div class="fcl__3col-full mt-1">
-				<!-- <button on:click>icon</button> -->
-				<!-- <button on:click>icon</button> -->
+				<!-- <button onclick>icon</button> -->
+				<!-- <button onclick>icon</button> -->
 				<!-- </header> -->
-				<!-- <button on:click={handleDisconnect} disabled> Switch</button> -->
+				<!-- <button onclick={handleDisconnect} disabled> Switch</button> -->
 
 				<button
-					on:click={() => handleDisconnect($accountData.account?.connector)}
+					onclick={() => handleDisconnect()}
 					class="fcl__btn-primary row justify-center"
 				>
 					<!-- prettier-ignore -->

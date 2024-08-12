@@ -1,1 +1,1 @@
-export { addFuel } from './addConnection.js'
+export { fuel } from './addConnection.js'

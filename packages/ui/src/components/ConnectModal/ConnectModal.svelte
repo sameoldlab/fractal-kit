@@ -1,69 +1,81 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte'
+	import { onDestroy, onMount, type Snippet } from 'svelte'
+	import { slide } from 'svelte/transition'
 	import copyEN from '../../copy/copy.EN.js'
 	import Modal from '../Common/Modal.svelte'
 	import Scannable from './Scannable.svelte'
 	import type { Config, Connector, StateDisconnected } from '@fractl-ui/types'
-	import type { Readable } from 'svelte/store'
-	import { slide } from 'svelte/transition'
 
-	export let config: Config<Connector>
-	export let state: Readable<StateDisconnected<Connector>>
-	export let btnClass = ''
-	export let triggerText = 'Connect Wallet'
-	export let onConnect: (fractl: Config<Connector>) => void
-	export let onConnectFail: (error: unknown) => void
+	// export let connectors: Config<Connector>['connectors']
+	type Props = {
+		connectors: [string, Connector][]
+		state: StateDisconnected<Connector>
+		btnClass: string
+		triggerText: string
+		onSuccess: (msg:{namespace: string, connector: Connector}) => void
+		onFailure: (error: unknown) => void
+		footer?: Snippet
+	}
 
-	let open: () => void
-	let close: () => void
+	let {
+		connectors,
+		state: fclState,
+		btnClass = '',
+		triggerText = 'Connect',
+		footer: disclaimer,
+		onSuccess,
+		onFailure
+	}: Props = $props()
+	let modal: Modal = $state()
 
 	// export let demo = true
 	// export let inputWatch = true
 	// export let accountStatus: string
 	// export let chainStatus
 	// export let showBalance: string
-	onMount(() => open())
-	onDestroy(() => {
-		close()
+	onMount(() => {
+		modal.open()
 	})
-	$: if ($state.status === 'connected') close()
+	onDestroy(() => {
+		modal.close()
+	})
 
-	let activeRequest: Connector | null = null //config.connectors[3]
-	$: title = !activeRequest ? 'Connect Wallet' : activeRequest.name
+	let activeRequest: Connector | undefined = $state() //config.connectors[3]
+	let title = $derived(!activeRequest ? 'Connect Wallet' : activeRequest.name)
+	// let title = $derived(fState.status)
 
-	const handleConnect = async (connector: Connector) => {
-		await config.reconnect([connector])
-
+	const handleConnect = async (connector: Connector, namespace: string) => {
+		// await config.reconnect([connector])
 		try {
-			// console.debug('config.state: ', $state.status)
+			// console.debug('config.state: ', status)
 			activeRequest = connector
-			await config.connect(connector)
-			onConnect(config)
+			await connector.fractl.connect()
+			modal.close()
+			onSuccess({namespace, connector})
 		} catch (error) {
-			// onConnectFail(error)
-			// console.error('caught: ', error)
+			onFailure(error)
 		}
 
-		// console.debug('config.state: ', $state.status)
+		// console.debug('config.state: ', status)
 	}
-	const clearRequest = () => (activeRequest = null)
+	const clearRequest = () => (activeRequest = undefined)
 </script>
 
 <!-- aria-expanded={open ? 'true' : 'false'} -->
 <button
 	aria-haspopup="dialog"
 	data-fractl-trigger
-	on:click={open}
+	onclick={modal.open}
 	class={btnClass}
 >
 	{triggerText}
 </button>
 
-<Modal titleText={title} bind:open bind:close customTrigger>
-	<svelte:fragment slot="icon-left">
+<Modal titleText={title} bind:this={modal} onClose={clearRequest}>
+	{#snippet iconLeft()}
 		<button
 			class:hide={!activeRequest}
-			on:click={clearRequest}
+			onclick={clearRequest}
 			class="fcl__header-btn"
 		>
 			<svg
@@ -84,15 +96,14 @@
 				/>
 			</svg>
 		</button>
-	</svelte:fragment>
-
+	{/snippet}
 	{#if activeRequest}
 		{#if activeRequest.type === 'injected'}
 			<!-- <Injected connector={activeRequest}></Injected> -->
 			<div id="fractl-injected" class="fcl__layout-1col fcl__el">
 				<div class="fcl__graphic-primary">
 					<!-- prettier-ignore -->
-					<svg class:hide={$state.status !== 'connecting' && $state.status !== 'reconnecting'} class="spin" width="108" height="108" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" > 
+					<svg class:hide={fclState.status !== 'connecting' && fclState.status !== 'reconnecting'} class="spin" width="108" height="108" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" > 
 						<path d="M98 50C98 23.4903 76.5097 2 50 2" stroke="url(#a)" stroke-width="4" stroke-linecap="round" /> 
 						<defs> 
 							<radialGradient id="radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(100 50) rotate(-90) scale(47 47)" > <stop stop-color="currentColor" /> <stop offset="1" stop-color="currentColor" stop-opacity="0" /> </radialGradient> 
@@ -106,7 +117,7 @@
 					/>
 				</div>
 
-				{#if $state.status === 'connecting' || $state.status === 'reconnecting'}
+				{#if fclState.status === 'connecting' || fclState.status === 'reconnecting'}
 					<h3 class="fcl__text-primary">Requesting Connection</h3>
 					<p class="fcl__text-secondary">
 						{copyEN(activeRequest.name).connecting[activeRequest.type]}
@@ -117,7 +128,7 @@
 						{copyEN(activeRequest.name).rejected[activeRequest.type]}
 					</p>
 					<button
-						on:click={() => handleConnect(activeRequest)}
+						onclick={() => handleConnect(activeRequest as Connector)}
 						class="fcl__btn-primary justify-center mt-1"
 						in:slide>Retry</button
 					>
@@ -129,25 +140,33 @@
 	{:else}
 		<div id="fractl-connect" class="fcl__layout-1col fcl__el">
 			<div class="connectors">
-				{#each config.connectors.toReversed() as connector}
+				{#each connectors as [namespace, connector]}
 					<button
-						on:click={() => handleConnect(connector)}
-						data-uid={connector.uid}
+						onclick={() => handleConnect(connector, namespace)}
+						data-uid={connector.id}
 						class="fcl__btn-primary connector justify-between {connector.type}"
 					>
 						{connector.name}
 						<!-- {connector.type} -->
 						{#if connector.icon}
 							<!-- Button is already labbeled by it's inner text making the image alt text repetitive -->
-							<!-- svelte-ignore a11y-missing-attribute -->
-							<img aria-hidden class="logo rounded" src={connector.icon} />
+							<!-- svelte-ignore a11y_missing_attribute -->
+							<img
+								aria-hidden="true"
+								class="logo rounded"
+								src={connector.icon}
+							/>
 						{/if}
 					</button>
 				{/each}
 			</div>
-			<slot name="footer" />
 		</div>
 	{/if}
+	{#snippet footer()}
+		{#if disclaimer}
+			{@render disclaimer()}
+		{/if}
+	{/snippet}
 </Modal>
 
 <style>

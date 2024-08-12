@@ -3,25 +3,18 @@
 	import type { Connector } from '@wagmi/core'
 	import skeleton from './skeletonQr.svg'
 	import { fade } from 'svelte/transition'
-	export let connector: Connector
-	let data: string = ''
-
-	console.log('getting uri from wallet connect')
-	const getQr = async () => {
-		try {
-			const data = await connector.getQr()
-		} catch (err) {
-			console.error(err)
-			throw Error(err)
-		}
+	type Props = {
+		connector: Connector
+		data: string
 	}
+	let { connector, data = '' }: Props = $props()
 
-	connector.getProvider().then((provider) => {
-		if (provider) {
-			provider.on('display_uri', (uri) => (data = uri))
-			provider.connect()
-		}
-	})
+	try {
+		connector.fractl.getUri((uri) => (data = uri))
+	} catch (err) {
+		console.error(err)
+		// throw Error(err)
+	}
 </script>
 
 <div id="fractl-scan" class="fcl__layout-1col fcl__el">
@@ -51,7 +44,7 @@
 		{/if}
 	</div>
 	<button
-		on:click={() => navigator.clipboard.writeText(data)}
+		onclick={() => navigator.clipboard.writeText(data)}
 		class="justify-center fcl__btn-primary">Copy to clipboard</button
 	>
 </div>
