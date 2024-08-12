@@ -1,201 +1,240 @@
-import { derived, get } from 'svelte/store'
-import ConnectModal from './components/ConnectModal/ConnectModal.svelte'
-import type { AccountData, Config, Connector, State } from '@fractl-ui/types'
-import { unmount, mount } from 'svelte'
+import { derived } from 'svelte/store'
+// import ConnectModal from './components/ConnectModal/ConnectModal.svelte'
+import type { AccountData, Config, Connector } from '@fractl-ui/types'
 import { SvelteMap } from 'svelte/reactivity'
-import { FiniteStateMachine } from './utils/stateMachine.svelte.js'
-import svelteFsm from './utils/svelte-fsm.js'
-const SINGLETON = 'fractl-connect'
 
 export type CreateProps = {
 	namespaces: Config<Connector>[]
 }
-type Connection = {
-	address: string
-	chain_id: { namespace: string; reference: string }
-	connector: Connector
+type Connection = Map<
+	Connector,
+	{
+		addresses: string[]
+		chain_id: { namespace: string; reference: string | number }
+	}
+>
+/**
+ * Maps wallets within a namespace by random hash.
+ * Considered address+walletId, but not sure if this is actually unique
+ */ // But yes a nested map is a bit odd, and might affect reactivity
+class Connections {
+	#value = $state<Connection>(new SvelteMap())
+	add(connector, { addresses, chain_id }) {
+		this.#value.set(connector, {
+			addresses,
+			chain_id
+		})
+	}
+	get value() {
+		return this.#value
+	}
 }
 
 type States = 'connected' | 'connecting' | 'disconnected'
-export function createFractl2({ namespaces }: CreateProps) {
-	const adapters = new Map(namespaces.map((ns) => [ns.namespace, ns]))
-	const connections = new Map()
+class Status {
+	#value = $state<States>('disconnected')
 
-	const machine = {
-		connected: {
-			getCurrent(namespace: string | undefined) {},
-			disconnect(connector: Connector) {
-				return 'disconnected'
-			}
-		},
-		connecting: {
-			_enter(params) {
-				console.log(params)
-			}
-		},
-		disconnected: {
-			reconnect({
-				namespace,
-				connector
-			}: {
-				namespace: string | undefined
-				connector: Connector | undefined
-			}) {
-				const adapter = namespace
-					? adapters.get(namespace)
-					: [...adapters.values()][0]
-				if (!adapter) return
-				adapter.reconnect(connector)
-				return 'connecting'
+	constructor(adapters: Map<string, Config<Connector>>) {
+		const stateStore = derived(
+			[...adapters.values()].map((c) => c.state),
+			($state, set) => {
+				const t = $state.reduce((status, curr) => {
+					// No change if already connected, else return the first state with an active status
+					// Active ranking: 1. connected 2. reconnecting 3. connecting 4. disconnected
+					if (status === 'disconnected' && curr.status === 'disconnected')
+						return 'disconnected'
+					if (
+						status === 'connecting' ||
+						curr.status === 'connecting' ||
+						curr.status === 'reconnecting'
+					)
+						return 'connecting'
+					if (status === 'connected' || curr.status === 'connected')
+						return 'connected'
+					return 'disconnected'
+				}, 'disconnected')
+				set(t)
+				console.log(t)
 			},
-			connect({
-				namespace,
-				connector
-			}: {
-				namespace: string | undefined
-				connector: Connector | undefined
-			}) {
-				const adapter = namespace
-					? adapters.get(namespace)
-					: [...adapters.values()][0]
-				if (!adapter) return
-				adapter.connect(connector)
-				return 'connecting'
-			},
-			_enter() {
-				/* If reconnect === true check for existing connections on initialization */
+			'disconnected'
+		)
+		stateStore.subscribe((status) => (this.#value = status))
+	}
+	get value() {
+		return this.#value
+	}
+}
+type AdapterActions = 'disconnect' | 'watchAccount' | 'connect' | 'reconnect'
+
+export function createFractl({ namespaces }: CreateProps) {
+	if (!namespaces || namespaces.length === 0) {
+		console.warn('rtfm')
+		throw new Error('No namespaces provided')
+	}
+
+	const adapters = $state(new Map(namespaces.map((ns) => [ns.namespace, ns])))
+	const defaultAdapter: Config<Connector> = adapters.values().next().value
+	const connectors = $state(new SvelteMap<string, readonly C[]>())
+	const connectorArr = $derived(
+		[...connectors.entries()].flatMap(([chain, config]) =>
+			config.map((c) => [chain, c] satisfies [string, C])
+		)
+	)
+	const connections = new Connections()
+	const status = new Status(adapters)
+
+	namespaces.forEach((ns) => {
+		connectors.set(ns.namespace, ns.connectors)
+		// actions.namespaces.set(ns.namespace, {
+		// 	disconnect: ns.disconnect,
+		// 	getAccount: () => get(ns.accountData)
+		// })
+	})
+
+	const call = <A extends AdapterActions>({
+		namespace,
+		action,
+		args
+	}: {
+		namespace: string
+		action: A
+		args: Config<Connector>[A]
+	}) => {
+		const adapter = adapters.get(namespace)
+		console.debug(
+			`Calling ${action} in ${namespace} with args: ${typeof args === 'object' ? '[Object]' : args}`
+		)
+		if (!adapter) {
+			throw new Error(`Namespace does not exist.\nAvailable namespaces:  [${[...adapters.keys()]}]
+				`)
+		}
+		return adapter[action](args)
+	}
+
+	const getCurrent = (namespace: string | undefined) => {
+		if (namespace) {
+			for (const [k, v] of connections.entries()) {
+				if (k === namespace) return v
 			}
-		},
-		'*': {
-			call(namespace: string, action: 'disconnect', ...args) {
-				return adapters.get(namespace)?.[action](args)
-			}
+		} else {
+			return [...connections.entries()][0]
 		}
 	}
-	return svelteFsm('disconnected', machine)
-}
+	const disconnect = (connector: Connector | undefined) => {
+		connector = connector ?? [...connections.value.entries()][0][0]
+		if (!connector) throw new Error('No connector available')
+		let namespace = connections.value.get(connector)?.chain_id.namespace
+		const adapter = connector ? adapters.get(namespace) : defaultAdapter
 
-class FractlState<C extends Connector> {
-	status: State<C>['status'] = $state('disconnected')
-	current: Connection | undefined = $state()
+		call({
+			namespace,
+			action: 'disconnect',
+			args: connector
+		})
+		/* disconnect given connector, or last Connection */
+	}
+	type ConnectionProps = [
+		namespace: string | undefined,
+		connector: Connector | undefined
+	]
+
+	const reconnect = ([namespace, connector]: ConnectionProps) => {
+		const adapter = namespace ? adapters.get(namespace) : defaultAdapter
+		if (!adapter) return
+		// const action = call({ action: 'reconnect', namespace: adapter.namespace, args: connector })
+		// return action
+	}
+
+	const connect = async ([namespace, connector]: ConnectionProps) => {
+		const adapter = namespace ? adapters.get(namespace) : defaultAdapter
+		if (!adapter) return
+		connector = connector ?? connectorArr[0][1]
+		if (!connector) return
+		const action = connector.fractl.connect().then((res) => {
+			connections.add(connector, {
+				addresses: res.accounts,
+				chain_id: { namespace, reference: res.chainId }
+			})
+		})
+		// const action = call({ action: 'connect', namespace: adapter.namespace, args: connector })
+		return action
+	}
+
+	return {
+		call,
+		connect,
+		disconnect,
+		get state() {
+			return status.value
+		},
+		get connectors() {
+			return connectorArr
+		},
+		get connections() {
+			return connections.value
+		},
+		getCurrent() {
+			return
+		},
+		getAccount({ namespace, address }) {
+			call({ namespace, action: 'watchAccount', args: address })
+		}
+	}
 }
 
 type Actions<C extends Connector> = {
 	getAccount: () => AccountData
 	disconnect: (connector: C) => Promise<void>
 }
-class FractlActions<C extends Connector> {
-	namespaces = new SvelteMap<string, Actions<C>>()
 
-	get(namespace: string) {
-		return this.namespaces.get(namespace)
-	}
-}
-export const actions = new FractlActions()
-
-export const createFractl = <C extends Connector>({
-	namespaces,
-	...props
-}: CreateProps<C>) => {
-	const connectors = new SvelteMap<string, readonly C[]>()
+/*
 	/**
 	 * Maps wallets within a namespace by random hash.
 	 * Considered address+walletId, but not sure if this is actually unique
-	 */ // But yes a nested map is a bit odd, and might affect reactivity
-	const connections = new Map(
-		namespaces.map(
-			(c) => [c.namespace, new Map()] as [string, Map<string, Connection>]
-		)
-	)
-	namespaces.forEach((ns) => {
-		connectors.set(ns.namespace, ns.connectors)
-		actions.namespaces.set(ns.namespace, {
-			disconnect: ns.disconnect,
-			getAccount: () => get(ns.accountData)
+	 / // But yes a nested map is a bit odd, and might affect reactivity
+const connections = new Map()
+const connectors = new SvelteMap<string, readonly C[]>()
+namespaces.forEach((ns) => {
+	connectors.set(ns.namespace, ns.connectors)
+})
+
+const connectorArr = [...connectors.entries()].flatMap(([chain, config]) =>
+	config.map((c) => [chain, c] satisfies [string, C])
+)
+
+return () =>
+	new Promise<void>((resolve, reject) => {
+		if (fState.status === 'connected') {
+			return reject('Already Connected')
+		}
+
+		const modal = mount(ConnectModal, {
+			target: getTarget(SINGLETON),
+			props: {
+				connectors: connectorArr,
+				state: fState,
+				onSuccess: (msg) => {
+					connections.get(msg.namespace)?.set(msg.connector.uid, {
+						address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+						namespace: 'eip155',
+						connector: msg.connector
+					})
+					fState.current = {
+						address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+						namespace: 'eip155',
+						connector: msg.connector
+					}
+					unmount(modal)
+					resolve()
+				},
+				onFailure: (error) => {
+					reject(error)
+				}
+			}
 		})
 	})
-
-	const connectorArr = [...connectors.entries()].flatMap(([chain, config]) =>
-		config.map((c) => [chain, c] satisfies [string, C])
-	)
-	console.log(connectorArr)
-
-	const stateStore = derived(
-		namespaces.map((c) => c.state),
-		($state, set) => {
-			const t = $state.reduce((acc, curr) => {
-				// No change if already connected, else return the first state with an active status
-				// Active ranking: 1. connected 2. reconnecting 3. connecting 4. disconnected
-				if (acc.status === 'connected') return acc
-				if (acc.status === 'connecting' || acc.status === 'reconnecting')
-					return acc
-				if (curr.status === 'connected') return curr
-				if (curr.status === 'connecting' || curr.status === 'reconnecting')
-					return curr
-				return curr
-			})
-			set(t)
-		},
-		{
-			current: null,
-			status: 'disconnected'
-		} as State<C>
-	)
-	const fState = new FractlState()
-	stateStore.subscribe(($s) => {
-		fState.status = $s.status
-		fState.current = $s.current
-	})
-
-	const isConnected = $derived(fState.status === 'connected')
-
-	return {
-		get state() {
-			return fState
-		},
-		get connectors() {
-			return connectorArr
-		},
-		get connections() {
-			return connections
-		},
-		get isConnected() {
-			return isConnected
-		},
-		connect: () =>
-			new Promise<void>((resolve, reject) => {
-				if (fState.status === 'connected') {
-					return reject('Already Connected')
-				}
-
-				const modal = mount(ConnectModal, {
-					target: getTarget(SINGLETON),
-					props: {
-						connectors: connectorArr,
-						state: fState,
-						onSuccess: (msg) => {
-							connections.get(msg.namespace)?.set(msg.connector.uid, {
-								address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
-								namespace: 'eip155',
-								connector: msg.connector
-							})
-							fState.current = {
-								address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
-								namespace: 'eip155',
-								connector: msg.connector
-							}
-							unmount(modal)
-							resolve()
-						},
-						onFailure: (error) => {
-							reject(error)
-						}
-					}
-				})
-			})
-	}
 }
-
+*/
 // export T&C text prop
 /*
 {
@@ -246,24 +285,3 @@ function getTarget(id: string) {
 
 	return target
 }
-
-type MyStates = "disabled" | "idle" | "running";
-type MyEvents = "toggleEnabled" | "start" | "stop";
-const f = new FiniteStateMachine<MyStates, MyEvents>("disabled", {
-  disabled: {
-    toggleEnabled: "idle"
-  },
-  idle: {
-    toggleEnabled: "disabled",
-    start: "running"
-  },
-  running: {
-    _enter: () => {
-      f.debounce(2000, "stop");
-    },
-    stop: "idle",
-    toggleEnabled: "disabled"
-  }
-});
-
-f
