@@ -30,6 +30,20 @@ export const config = createConfig({
 	]
 })
 
+export const mockConfig = createConfig({
+	chains: [mainnet, arbitrum],
+	storage,
+	transports: {
+		[mainnet.id]: http(),
+		[arbitrum.id]: http()
+	},
+	connectors: [
+		mock({
+			accounts: ['0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045']
+		})
+	]
+})
+
 export default readable(config, (set) => {
 	config.subscribe(
 		(state) => state.status,
